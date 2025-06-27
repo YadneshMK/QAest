@@ -1093,7 +1093,7 @@ const App: React.FC = () => {
                   {showFilters ? 'Hide Filters' : 'Show Filters'}
                 </button>
                 <button 
-                  onClick={fetchTestCases}
+                  onClick={() => fetchTestCases()}
                   style={{
                     backgroundColor: 'transparent',
                     color: '#38a169',
