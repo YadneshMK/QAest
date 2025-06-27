@@ -1480,7 +1480,13 @@ const App: React.FC = () => {
               borderRadius: '8px'
             }}>
               <TestCaseForm
-                initialData={editingTestCase || undefined}
+                initialData={editingTestCase ? {
+                  ...editingTestCase,
+                  priority: editingTestCase.priority as 'critical' | 'high' | 'medium' | 'low',
+                  status: editingTestCase.status as 'draft' | 'active' | 'deprecated' | 'archived' | 'passed' | 'failed' | 'blocked' | 'not_executed',
+                  appType: editingTestCase.appType as 'web' | 'mobile' | 'desktop' | 'api',
+                  osType: editingTestCase.osType as 'windows' | 'macos' | 'linux' | 'ios' | 'android' | 'cross_platform'
+                } : undefined}
                 onSubmit={handleCreateTestCase}
                 onCancel={() => {
                   setShowCreateForm(false);
