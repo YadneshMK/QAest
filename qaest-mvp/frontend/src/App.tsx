@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import UserApprovalPanel from './components/UserApprovalPanel';
+import { API_ENDPOINTS } from './config';
 
 interface TestCase {
   id: string;
@@ -122,7 +123,7 @@ const App: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:8000/api/auth/login', {
+      const response = await fetch(API_ENDPOINTS.login, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -163,7 +164,7 @@ const App: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:8000/api/auth/register', {
+      const response = await fetch(API_ENDPOINTS.register, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -244,7 +245,7 @@ const App: React.FC = () => {
 
   const fetchFilterOptions = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/test-cases/filters');
+      const response = await fetch(API_ENDPOINTS.filters);
       const data = await response.json();
       
       if (data.success) {
@@ -271,7 +272,7 @@ const App: React.FC = () => {
     try {
       setLoading(true);
       const queryString = buildFilterQuery();
-      const url = `http://localhost:8000/api/test-cases${queryString ? '?' + queryString : ''}`;
+      const url = `${API_ENDPOINTS.testCases}${queryString ? '?' + queryString : ''}`;
       
       const response = await fetch(url);
       const data = await response.json();
@@ -301,7 +302,7 @@ const App: React.FC = () => {
         createdBy: currentUser?.username || 'unknown'
       };
 
-      const response = await fetch('http://localhost:8000/api/test-cases', {
+      const response = await fetch(API_ENDPOINTS.testCases, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

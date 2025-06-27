@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_ENDPOINTS, API_BASE_URL } from '../config';
 
 interface PendingUser {
   id: string;
@@ -54,7 +55,7 @@ const UserApprovalPanel: React.FC<UserApprovalPanelProps> = ({ authToken, curren
   const fetchPendingUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/api/users/pending', {
+      const response = await fetch(API_ENDPOINTS.pendingUsers, {
         headers: {
           'Authorization': `Bearer ${authToken}`
         }
@@ -78,7 +79,7 @@ const UserApprovalPanel: React.FC<UserApprovalPanelProps> = ({ authToken, curren
   const fetchAllUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/api/users', {
+      const response = await fetch(`${API_BASE_URL}/api/users`, {
         headers: {
           'Authorization': `Bearer ${authToken}`
         }
@@ -101,7 +102,7 @@ const UserApprovalPanel: React.FC<UserApprovalPanelProps> = ({ authToken, curren
 
   const handleApproveUser = async (userId: string) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/users/${userId}/approve`, {
+      const response = await fetch(API_ENDPOINTS.approveUser(userId), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -125,7 +126,7 @@ const UserApprovalPanel: React.FC<UserApprovalPanelProps> = ({ authToken, curren
 
   const handleRejectUser = async (userId: string, reason: string) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/users/${userId}/reject`, {
+      const response = await fetch(API_ENDPOINTS.rejectUser(userId), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -152,7 +153,7 @@ const UserApprovalPanel: React.FC<UserApprovalPanelProps> = ({ authToken, curren
     if (!selectedUser || !newRole) return;
 
     try {
-      const response = await fetch(`http://localhost:8000/api/users/${selectedUser.id}/role`, {
+      const response = await fetch(API_ENDPOINTS.updateRole(selectedUser.id), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${authToken}`,
