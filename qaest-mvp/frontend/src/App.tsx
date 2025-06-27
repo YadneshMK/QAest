@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
+import './modern-design.css';
 import UserApprovalPanel from './components/UserApprovalPanel';
 import TestCaseForm from './components/TestCaseForm';
 import TestCaseCard from './components/TestCaseCard';
@@ -378,32 +379,69 @@ const App: React.FC = () => {
     return (
       <div style={{ 
         minHeight: '100vh', 
-        backgroundColor: '#f8f9fa',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         display: 'flex',
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        position: 'relative',
+        overflow: 'hidden'
       }}>
+        {/* Animated background shapes */}
         <div style={{
-          backgroundColor: 'white',
-          padding: window.innerWidth < 640 ? '1.5rem' : '3rem',
-          borderRadius: '16px',
-          boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+          position: 'absolute',
+          width: '400px',
+          height: '400px',
+          background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+          borderRadius: '50%',
+          top: '-200px',
+          right: '-100px',
+          opacity: 0.5,
+          animation: 'pulse 4s ease-in-out infinite'
+        }} />
+        <div style={{
+          position: 'absolute',
+          width: '300px',
+          height: '300px',
+          background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+          borderRadius: '50%',
+          bottom: '-150px',
+          left: '-100px',
+          opacity: 0.5,
+          animation: 'pulse 4s ease-in-out infinite 2s'
+        }} />
+        
+        <div className="card-glass animate-fadeIn" style={{
+          padding: window.innerWidth < 640 ? '2rem' : '3rem',
           width: '100%',
           maxWidth: '450px',
-          margin: '1rem',
-          border: '1px solid #e2e8f0'
+          margin: '1rem'
         }}>
-          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            <h1 style={{ 
-              color: '#ff6b35', 
-              margin: '0 0 0.5rem 0',
-              fontSize: '2rem',
-              fontWeight: '700'
+          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+            <div style={{
+              width: '80px',
+              height: '80px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              borderRadius: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.5rem',
+              fontSize: '2.5rem',
+              boxShadow: '0 10px 25px rgba(99, 102, 241, 0.3)',
+              transform: 'rotate(-10deg)'
             }}>
-              🚀 QAest
+              🚀
+            </div>
+            <h1 className="text-gradient" style={{ 
+              margin: '0 0 0.5rem 0',
+              fontSize: '2.5rem',
+              fontWeight: '800',
+              letterSpacing: '-0.025em'
+            }}>
+              QAest
             </h1>
-            <p style={{ color: '#718096', margin: 0, fontSize: '1.1rem' }}>
-              Test Case Management System
+            <p style={{ color: '#4b5563', margin: 0, fontSize: '1rem', fontWeight: '500' }}>
+              Modern Test Case Management System
             </p>
           </div>
 
@@ -428,10 +466,12 @@ const App: React.FC = () => {
                 <label style={{ 
                   display: 'block', 
                   marginBottom: '0.5rem', 
-                  fontWeight: '500',
-                  color: '#2d3748'
+                  fontWeight: '600',
+                  color: '#374151',
+                  fontSize: '0.875rem',
+                  letterSpacing: '0.025em'
                 }}>
-                  Username:
+                  Username
                 </label>
                 <input
                   type="text"
@@ -439,16 +479,10 @@ const App: React.FC = () => {
                   onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
                   placeholder="Enter your username"
                   required
+                  className="input-modern"
                   style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '2px solid #e2e8f0',
-                    borderRadius: '8px',
-                    fontSize: '1rem',
-                    transition: 'border-color 0.3s'
+                    fontSize: '1rem'
                   }}
-                  onFocus={(e) => e.target.style.borderColor = '#ff6b35'}
-                  onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
                 />
               </div>
               
@@ -456,10 +490,12 @@ const App: React.FC = () => {
                 <label style={{ 
                   display: 'block', 
                   marginBottom: '0.5rem', 
-                  fontWeight: '500',
-                  color: '#2d3748'
+                  fontWeight: '600',
+                  color: '#374151',
+                  fontSize: '0.875rem',
+                  letterSpacing: '0.025em'
                 }}>
-                  Password:
+                  Password
                 </label>
                 <input
                   type="password"
@@ -467,16 +503,10 @@ const App: React.FC = () => {
                   onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
                   placeholder="Enter your password"
                   required
+                  className="input-modern"
                   style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '2px solid #e2e8f0',
-                    borderRadius: '8px',
-                    fontSize: '1rem',
-                    transition: 'border-color 0.3s'
+                    fontSize: '1rem'
                   }}
-                  onFocus={(e) => e.target.style.borderColor = '#ff6b35'}
-                  onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
                 />
               </div>
               
@@ -748,38 +778,68 @@ const App: React.FC = () => {
 
   // Main Dashboard
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       {/* Header */}
       <header style={{ 
-        backgroundColor: '#ff6b35', 
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
         color: 'white', 
         padding: '1rem 2rem',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-        <h1 style={{ margin: 0, fontSize: '1.5rem' }}>
-          🚀 QAest - Test Case Management
-        </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{
+              width: '45px',
+              height: '45px',
+              background: 'rgba(255, 255, 255, 0.2)',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.5rem'
+            }}>
+              🚀
+            </div>
+            <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700' }}>
+              QAest
+            </h1>
+          </div>
           
           {/* Navigation */}
           <nav style={{ display: 'flex', gap: '1rem' }}>
             <button
               onClick={() => setCurrentView('dashboard')}
               style={{
-                backgroundColor: currentView === 'dashboard' ? 'rgba(255,255,255,0.2)' : 'transparent',
+                backgroundColor: currentView === 'dashboard' ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(10px)',
                 color: 'white',
-                border: '1px solid rgba(255,255,255,0.3)',
-                padding: '0.5rem 1rem',
-                borderRadius: '6px',
+                border: 'none',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '12px',
                 cursor: 'pointer',
                 fontSize: '0.9rem',
-                transition: 'all 0.2s ease'
+                fontWeight: '500',
+                transition: 'all 0.2s ease',
+                boxShadow: currentView === 'dashboard' ? '0 4px 6px rgba(0,0,0,0.1)' : 'none'
+              }}
+              onMouseEnter={(e) => {
+                if (currentView !== 'dashboard') {
+                  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (currentView !== 'dashboard') {
+                  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                }
               }}
             >
-              Dashboard
+              📊 Dashboard
             </button>
             
             {/* Permissions button - visible to all users */}

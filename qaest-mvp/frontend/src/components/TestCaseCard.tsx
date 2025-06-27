@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import '../modern-design.css';
 
 interface TestStep {
   stepNumber: number;
@@ -50,26 +51,26 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({
 }) => {
   const [expanded, setExpanded] = useState(false);
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority.toLowerCase()) {
-      case 'critical': return '#dc3545';
-      case 'high': return '#fd7e14';
-      case 'medium': return '#ffc107';
-      case 'low': return '#28a745';
-      default: return '#6c757d';
-    }
+  const getPriorityStyle = (priority: string) => {
+    const styles: Record<string, { bg: string; color: string; icon: string }> = {
+      critical: { bg: '#fee2e2', color: '#dc2626', icon: '🔴' },
+      high: { bg: '#fed7aa', color: '#ea580c', icon: '🟠' },
+      medium: { bg: '#fef3c7', color: '#d97706', icon: '🟡' },
+      low: { bg: '#d1fae5', color: '#059669', icon: '🟢' }
+    };
+    return styles[priority.toLowerCase()] || { bg: '#f3f4f6', color: '#6b7280', icon: '⚪' };
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'active': return '#28a745';
-      case 'draft': return '#6c757d';
-      case 'passed': return '#20c997';
-      case 'failed': return '#dc3545';
-      case 'blocked': return '#e83e8c';
-      case 'not_executed': return '#17a2b8';
-      default: return '#6c757d';
-    }
+  const getStatusStyle = (status: string) => {
+    const styles: Record<string, { bg: string; color: string; icon: string }> = {
+      active: { bg: '#d1fae5', color: '#059669', icon: '✓' },
+      draft: { bg: '#f3f4f6', color: '#6b7280', icon: '📝' },
+      passed: { bg: '#cffafe', color: '#0891b2', icon: '✅' },
+      failed: { bg: '#fee2e2', color: '#dc2626', icon: '❌' },
+      blocked: { bg: '#fce7f3', color: '#be185d', icon: '🚫' },
+      not_executed: { bg: '#dbeafe', color: '#2563eb', icon: '⏸️' }
+    };
+    return styles[status.toLowerCase()] || { bg: '#f3f4f6', color: '#6b7280', icon: '❓' };
   };
 
   const getAppTypeIcon = (appType: string) => {
@@ -94,13 +95,11 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({
   );
 
   return (
-    <div style={{ 
-      backgroundColor: 'white', 
-      borderRadius: '12px', 
-      boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
-      border: '1px solid #e2e8f0',
-      transition: 'all 0.2s ease',
-      overflow: 'hidden'
+    <div className="card hover-scale" style={{ 
+      background: 'white',
+      borderRadius: '16px', 
+      overflow: 'hidden',
+      position: 'relative'
     }}>
       {/* Header */}
       <div style={{ 
@@ -154,24 +153,32 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({
         {/* Status badges */}
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
           <span style={{ 
-            backgroundColor: getPriorityColor(testCase.priority), 
-            color: 'white',
-            padding: '0.25rem 0.75rem', 
-            borderRadius: '6px',
-            fontSize: '0.8rem',
-            fontWeight: '500'
+            backgroundColor: getPriorityStyle(testCase.priority).bg, 
+            color: getPriorityStyle(testCase.priority).color,
+            padding: '0.375rem 0.875rem', 
+            borderRadius: '9999px',
+            fontSize: '0.75rem',
+            fontWeight: '600',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.25rem'
           }}>
-            {testCase.priority}
+            <span>{getPriorityStyle(testCase.priority).icon}</span>
+            {testCase.priority.toUpperCase()}
           </span>
           <span style={{ 
-            backgroundColor: getStatusColor(testCase.status), 
-            color: 'white',
-            padding: '0.25rem 0.75rem', 
-            borderRadius: '6px',
-            fontSize: '0.8rem',
-            fontWeight: '500'
+            backgroundColor: getStatusStyle(testCase.status).bg, 
+            color: getStatusStyle(testCase.status).color,
+            padding: '0.375rem 0.875rem', 
+            borderRadius: '9999px',
+            fontSize: '0.75rem',
+            fontWeight: '600',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.25rem'
           }}>
-            {testCase.status}
+            <span>{getStatusStyle(testCase.status).icon}</span>
+            {testCase.status.replace('_', ' ').toUpperCase()}
           </span>
           <span style={{ 
             backgroundColor: '#f1f3f4', 
