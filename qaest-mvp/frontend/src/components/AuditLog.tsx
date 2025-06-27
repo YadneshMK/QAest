@@ -76,7 +76,7 @@ const AuditLog: React.FC<AuditLogProps> = ({
     if (action.includes('approve')) return '#28a745';
     if (action.includes('reject') || action.includes('deny')) return '#dc3545';
     if (action.includes('create')) return '#007bff';
-    if (action.includes('update') || action.includes('edit')) return '#ffc107';
+    if (action.includes('update') || action.includes('edit')) return '#d97706'; /* Better contrast */
     if (action.includes('delete')) return '#dc3545';
     if (action.includes('login')) return '#17a2b8';
     return '#6c757d';

@@ -187,13 +187,20 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({ onSubmit, onCancel, initial
         overflow: 'hidden'
       }}>
         {/* Tab Navigation */}
-        <div style={{ 
-          display: 'flex', 
-          borderBottom: '1px solid #eee',
-          backgroundColor: '#f8f9fa'
-        }}>
+        <div 
+          role="tablist"
+          style={{ 
+            display: 'flex', 
+            borderBottom: '1px solid #eee',
+            backgroundColor: '#f8f9fa'
+          }}
+        >
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'basic'}
+            aria-controls="basic-panel"
+            id="basic-tab"
             style={activeTab === 'basic' ? activeTabStyle : tabStyle}
             onClick={() => setActiveTab('basic')}
           >
@@ -201,6 +208,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({ onSubmit, onCancel, initial
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'details'}
+            aria-controls="details-panel"
+            id="details-tab"
             style={activeTab === 'details' ? activeTabStyle : tabStyle}
             onClick={() => setActiveTab('details')}
           >
@@ -208,6 +219,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({ onSubmit, onCancel, initial
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'steps'}
+            aria-controls="steps-panel"
+            id="steps-tab"
             style={activeTab === 'steps' ? activeTabStyle : tabStyle}
             onClick={() => setActiveTab('steps')}
           >
@@ -215,6 +230,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({ onSubmit, onCancel, initial
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'metadata'}
+            aria-controls="metadata-panel"
+            id="metadata-tab"
             style={activeTab === 'metadata' ? activeTabStyle : tabStyle}
             onClick={() => setActiveTab('metadata')}
           >

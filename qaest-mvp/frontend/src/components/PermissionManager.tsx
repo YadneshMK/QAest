@@ -164,7 +164,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ currentUser, auth
 
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
-      case 'pending': return '#ffc107';
+      case 'pending': return '#d97706'; /* Better contrast with white text */
       case 'approved': return '#28a745';
       case 'denied': return '#dc3545';
       case 'expired': return '#6c757d';
@@ -359,13 +359,20 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ currentUser, auth
       )}
 
       {/* Tab Navigation */}
-      <div style={{ 
-        display: 'flex', 
-        borderBottom: '1px solid #eee',
-        marginBottom: '2rem'
-      }}>
+      <div 
+        role="tablist"
+        style={{ 
+          display: 'flex', 
+          borderBottom: '1px solid #eee',
+          marginBottom: '2rem'
+        }}
+      >
         <button
           type="button"
+          role="tab"
+          aria-selected={activeTab === 'my_requests'}
+          aria-controls="my-requests-panel"
+          id="my-requests-tab"
           style={activeTab === 'my_requests' ? activeTabStyle : tabStyle}
           onClick={() => setActiveTab('my_requests')}
         >
@@ -373,6 +380,10 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ currentUser, auth
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={activeTab === 'pending_approvals'}
+          aria-controls="pending-approvals-panel"
+          id="pending-approvals-tab"
           style={activeTab === 'pending_approvals' ? activeTabStyle : tabStyle}
           onClick={() => setActiveTab('pending_approvals')}
         >

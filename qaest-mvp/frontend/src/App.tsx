@@ -84,6 +84,7 @@ const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [currentView, setCurrentView] = useState<'dashboard' | 'approvals' | 'permissions'>('dashboard');
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [loginForm, setLoginForm] = useState({
     username: '',
     password: ''
@@ -142,6 +143,17 @@ const App: React.FC = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form
+    if (!loginForm.username.trim()) {
+      setError('Please enter your username');
+      return;
+    }
+    if (!loginForm.password.trim()) {
+      setError('Please enter your password');
+      return;
+    }
+    
     setLoginLoading(true);
     setError(null);
 
@@ -222,6 +234,10 @@ const App: React.FC = () => {
           
           // Save auth data to localStorage
           localStorage.setItem('qaest_auth', JSON.stringify(authData));
+          
+          // Show success message
+          setSuccessMessage('Welcome to QAest! You have successfully logged in.');
+          setTimeout(() => setSuccessMessage(null), 5000);
           
           // Fetch test cases and filter options after successful registration
           await fetchTestCases();
@@ -446,15 +462,19 @@ const App: React.FC = () => {
           </div>
 
           {error && (
-            <div style={{ 
-              backgroundColor: '#fff3f0', 
-              color: '#d73502', 
-              padding: '1rem', 
-              borderRadius: '8px',
-              marginBottom: '1.5rem',
-              textAlign: 'center',
-              border: '1px solid #ffb3a6'
-            }}>
+            <div 
+              role="alert"
+              aria-live="assertive"
+              style={{ 
+                backgroundColor: '#fff3f0', 
+                color: '#991b1b', /* Better contrast */ 
+                padding: '1rem', 
+                borderRadius: '8px',
+                marginBottom: '1.5rem',
+                textAlign: 'center',
+                border: '1px solid #ffb3a6'
+              }}
+            >
               {error}
             </div>
           )}
@@ -463,7 +483,7 @@ const App: React.FC = () => {
             // Login Form
             <form onSubmit={handleLogin}>
               <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ 
+                <label htmlFor="login-username" style={{ 
                   display: 'block', 
                   marginBottom: '0.5rem', 
                   fontWeight: '600',
@@ -474,11 +494,14 @@ const App: React.FC = () => {
                   Username
                 </label>
                 <input
+                  id="login-username"
                   type="text"
                   value={loginForm.username}
                   onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
                   placeholder="Enter your username"
                   required
+                  aria-required="true"
+                  aria-label="Username"
                   className="input-modern"
                   style={{
                     fontSize: '1rem'
@@ -487,7 +510,7 @@ const App: React.FC = () => {
               </div>
               
               <div style={{ marginBottom: '2rem' }}>
-                <label style={{ 
+                <label htmlFor="login-password" style={{ 
                   display: 'block', 
                   marginBottom: '0.5rem', 
                   fontWeight: '600',
@@ -498,11 +521,14 @@ const App: React.FC = () => {
                   Password
                 </label>
                 <input
+                  id="login-password"
                   type="password"
                   value={loginForm.password}
                   onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
                   placeholder="Enter your password"
                   required
+                  aria-required="true"
+                  aria-label="Password"
                   className="input-modern"
                   style={{
                     fontSize: '1rem'
@@ -554,15 +580,18 @@ const App: React.FC = () => {
             <form onSubmit={handleRegister}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#2d3748' }}>
+                  <label htmlFor="register-firstName" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#2d3748' }}>
                     First Name:
                   </label>
                   <input
+                    id="register-firstName"
                     type="text"
                     value={registerForm.firstName}
                     onChange={(e) => setRegisterForm({ ...registerForm, firstName: e.target.value })}
                     placeholder="First name"
                     required
+                    aria-required="true"
+                    aria-label="First Name"
                     style={{
                       width: '100%',
                       padding: '0.75rem',
@@ -573,15 +602,18 @@ const App: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#2d3748' }}>
+                  <label htmlFor="register-lastName" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#2d3748' }}>
                     Last Name:
                   </label>
                   <input
+                    id="register-lastName"
                     type="text"
                     value={registerForm.lastName}
                     onChange={(e) => setRegisterForm({ ...registerForm, lastName: e.target.value })}
                     placeholder="Last name"
                     required
+                    aria-required="true"
+                    aria-label="Last Name"
                     style={{
                       width: '100%',
                       padding: '0.75rem',
@@ -594,15 +626,18 @@ const App: React.FC = () => {
               </div>
 
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#2d3748' }}>
+                <label htmlFor="register-username" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#2d3748' }}>
                   Username:
                 </label>
                 <input
+                  id="register-username"
                   type="text"
                   value={registerForm.username}
                   onChange={(e) => setRegisterForm({ ...registerForm, username: e.target.value })}
                   placeholder="Choose a username"
                   required
+                  aria-required="true"
+                  aria-label="Username"
                   style={{
                     width: '100%',
                     padding: '0.75rem',
@@ -614,15 +649,18 @@ const App: React.FC = () => {
               </div>
 
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#2d3748' }}>
+                <label htmlFor="register-email" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#2d3748' }}>
                   Email:
                 </label>
                 <input
+                  id="register-email"
                   type="email"
                   value={registerForm.email}
                   onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
                   placeholder="Enter your email"
                   required
+                  aria-required="true"
+                  aria-label="Email Address"
                   style={{
                     width: '100%',
                     padding: '0.75rem',
@@ -634,15 +672,18 @@ const App: React.FC = () => {
               </div>
 
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#2d3748' }}>
+                <label htmlFor="register-password" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#2d3748' }}>
                   Password:
                 </label>
                 <input
+                  id="register-password"
                   type="password"
                   value={registerForm.password}
                   onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
                   placeholder="Choose a password"
                   required
+                  aria-required="true"
+                  aria-label="Password"
                   style={{
                     width: '100%',
                     padding: '0.75rem',
@@ -703,7 +744,7 @@ const App: React.FC = () => {
                 style={{
                   width: '100%',
                   backgroundColor: 'transparent',
-                  color: '#718096',
+                  color: '#495057' /* Better contrast */,
                   border: '2px solid #e2e8f0',
                   padding: '1rem',
                   borderRadius: '8px',
@@ -728,7 +769,7 @@ const App: React.FC = () => {
               border: '1px solid #e2e8f0'
             }}>
               <h4 style={{ margin: '0 0 0.5rem 0', color: '#2d3748', fontSize: '0.9rem' }}>Demo Credentials:</h4>
-              <div style={{ fontSize: '0.8rem', color: '#718096' }}>
+              <div style={{ fontSize: '0.8rem', color: '#495057' /* Better contrast */ }}>
                 <p style={{ margin: '0.25rem 0' }}>
                   <strong>QA Lead:</strong> qa-lead / lead123
                 </p>
@@ -779,6 +820,22 @@ const App: React.FC = () => {
   // Main Dashboard
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+      {/* Skip Navigation Link */}
+      <a 
+        href="#main-content" 
+        className="sr-only"
+        style={{
+          position: 'absolute',
+          left: '-10000px',
+          top: 'auto',
+          width: '1px',
+          height: '1px',
+          overflow: 'hidden'
+        }}
+      >
+        Skip to main content
+      </a>
+      
       {/* Header */}
       <header style={{ 
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
@@ -812,7 +869,11 @@ const App: React.FC = () => {
           </div>
           
           {/* Navigation */}
-          <nav style={{ display: 'flex', gap: '1rem' }}>
+          <nav style={{ 
+            display: 'flex', 
+            gap: window.innerWidth < 640 ? '0.5rem' : '1rem',
+            flexWrap: window.innerWidth < 768 ? 'wrap' : 'nowrap'
+          }}>
             <button
               onClick={() => setCurrentView('dashboard')}
               style={{
@@ -918,27 +979,35 @@ const App: React.FC = () => {
         )}
       </header>
 
-      <main style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
+      <main id="main-content" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
         {error && (
-          <div style={{ 
-            backgroundColor: '#fff3f0', 
-            color: '#d73502', 
-            padding: '1rem', 
-            borderRadius: '8px',
-            marginBottom: '2rem',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            border: '1px solid #ffb3a6'
-          }}>
+          <div 
+            role="alert"
+            aria-live="polite"
+            style={{ 
+              backgroundColor: '#fff3f0', 
+              color: '#991b1b', /* Better contrast */ 
+              padding: '1rem', 
+              borderRadius: '8px',
+              marginBottom: '2rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              border: '1px solid #ffb3a6'
+            }}
+          >
             <span>{error}</span>
-            <button onClick={() => setError(null)} style={{
-              backgroundColor: 'transparent',
-              color: '#d73502',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '1.2rem'
-            }}>
+            <button 
+              onClick={() => setError(null)} 
+              aria-label="Dismiss error message"
+              style={{
+                backgroundColor: 'transparent',
+                color: '#991b1b', /* Better contrast */
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1.2rem'
+              }}
+            >
               ×
             </button>
           </div>
@@ -954,7 +1023,7 @@ const App: React.FC = () => {
         {/* Dashboard Header */}
         <div style={{ marginBottom: '2rem' }}>
               <h2 style={{ margin: '0 0 0.5rem 0', color: '#2d3748' }}>Test Case Dashboard</h2>
-              <p style={{ color: '#718096', margin: '0 0 1rem 0' }}>
+              <p style={{ color: '#495057' /* Better contrast */, margin: '0 0 1rem 0' }}>
             Manage and track your test cases efficiently
           </p>
           
@@ -1169,7 +1238,7 @@ const App: React.FC = () => {
                     onClick={clearFilters}
                     style={{
                       backgroundColor: 'transparent',
-                      color: '#718096',
+                      color: '#495057' /* Better contrast */,
                       border: '1px solid #e2e8f0',
                       padding: '0.75rem 1.5rem',
                       borderRadius: '6px',
@@ -1198,7 +1267,7 @@ const App: React.FC = () => {
                 boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
                 border: '1px solid #e2e8f0'
               }}>
-                <p style={{ margin: '0 0 0.5rem 0', color: '#718096', fontSize: '0.9rem' }}>Total Test Cases</p>
+                <p style={{ margin: '0 0 0.5rem 0', color: '#495057' /* Better contrast */, fontSize: '0.9rem' }}>Total Test Cases</p>
                 <h3 style={{ margin: 0, fontSize: '2rem', color: '#ff6b35', fontWeight: '600' }}>{testCases.length}</h3>
           </div>
               <div style={{ 
@@ -1208,7 +1277,7 @@ const App: React.FC = () => {
                 boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
                 border: '1px solid #e2e8f0'
               }}>
-                <p style={{ margin: '0 0 0.5rem 0', color: '#718096', fontSize: '0.9rem' }}>Active Cases</p>
+                <p style={{ margin: '0 0 0.5rem 0', color: '#495057' /* Better contrast */, fontSize: '0.9rem' }}>Active Cases</p>
                 <h3 style={{ margin: 0, fontSize: '2rem', color: '#38a169', fontWeight: '600' }}>
               {testCases.filter(tc => tc.status === 'active').length}
             </h3>
@@ -1220,7 +1289,7 @@ const App: React.FC = () => {
                 boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
                 border: '1px solid #e2e8f0'
               }}>
-                <p style={{ margin: '0 0 0.5rem 0', color: '#718096', fontSize: '0.9rem' }}>High Priority</p>
+                <p style={{ margin: '0 0 0.5rem 0', color: '#495057' /* Better contrast */, fontSize: '0.9rem' }}>High Priority</p>
                 <h3 style={{ margin: 0, fontSize: '2rem', color: '#ed8936', fontWeight: '600' }}>
               {testCases.filter(tc => tc.priority === 'high').length}
             </h3>
@@ -1232,7 +1301,7 @@ const App: React.FC = () => {
                 boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
                 border: '1px solid #e2e8f0'
               }}>
-                <p style={{ margin: '0 0 0.5rem 0', color: '#718096', fontSize: '0.9rem' }}>Your Role</p>
+                <p style={{ margin: '0 0 0.5rem 0', color: '#495057' /* Better contrast */, fontSize: '0.9rem' }}>Your Role</p>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#e55d2b', fontWeight: '600' }}>
               {currentUser?.role.replace('_', ' ').toUpperCase()}
             </h3>
@@ -1244,8 +1313,10 @@ const App: React.FC = () => {
         
         <div style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', 
-          gap: '1rem'
+          gridTemplateColumns: window.innerWidth < 640 ? '1fr' : 
+                             window.innerWidth < 1024 ? 'repeat(auto-fill, minmax(300px, 1fr))' : 
+                             'repeat(auto-fill, minmax(350px, 1fr))', 
+          gap: window.innerWidth < 640 ? '0.75rem' : '1rem'
         }}>
           {testCases.map((testCase) => (
             <TestCaseCard
@@ -1269,7 +1340,7 @@ const App: React.FC = () => {
         </div>
 
         {testCases.length === 0 && !loading && (
-              <div style={{ textAlign: 'center', padding: '3rem', color: '#718096' }}>
+              <div style={{ textAlign: 'center', padding: '3rem', color: '#495057' /* Better contrast */ }}>
                 <h3 style={{ color: '#2d3748' }}>No test cases found</h3>
                 <p>Create your first test case or adjust your filters</p>
           </div>

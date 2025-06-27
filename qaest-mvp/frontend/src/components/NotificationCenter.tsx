@@ -131,7 +131,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
   const getNotificationColor = (type: string) => {
     switch (type) {
       case 'success': return '#28a745';
-      case 'warning': return '#ffc107';
+      case 'warning': return '#d97706'; /* Better contrast with white text */
       case 'error': return '#dc3545';
       case 'approval_pending': return '#ff6b35';
       case 'permission_request': return '#6f42c1';
@@ -244,7 +244,8 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                     color: '#718096'
                   }}
                 >
-                  ×
+                  <span aria-hidden="true">×</span>
+                  <span className="sr-only">Close notification panel</span>
                 </button>
               </div>
             </div>
@@ -303,6 +304,8 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                 filteredNotifications.map(notification => (
                   <div
                     key={notification.id}
+                    tabIndex={notification.actionUrl ? 0 : -1}
+                    role={notification.actionUrl ? 'button' : undefined}
                     style={{
                       padding: '1rem',
                       borderBottom: '1px solid #e2e8f0',
@@ -311,6 +314,12 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                       transition: 'background-color 0.2s ease'
                     }}
                     onClick={() => notification.actionUrl && handleNotificationClick(notification)}
+                    onKeyDown={(e) => {
+                      if (notification.actionUrl && (e.key === 'Enter' || e.key === ' ')) {
+                        e.preventDefault();
+                        handleNotificationClick(notification);
+                      }
+                    }}
                     onMouseEnter={(e) => {
                       if (notification.actionUrl) {
                         e.currentTarget.style.backgroundColor = '#e2e8f0';
@@ -353,7 +362,8 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                               padding: '2px'
                             }}
                           >
-                            ×
+                            <span aria-hidden="true">×</span>
+                            <span className="sr-only">Delete notification</span>
                           </button>
                         </div>
                         <p style={{

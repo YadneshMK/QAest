@@ -296,16 +296,23 @@ const UserApprovalPanel: React.FC<UserApprovalPanelProps> = ({ authToken, curren
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '2rem' }}>
-          <div style={{ 
-            border: '4px solid #e2e8f0',
-            borderTop: '4px solid #ff6b35',
-            borderRadius: '50%',
-            width: '40px',
-            height: '40px',
-            animation: 'spin 2s linear infinite',
-            margin: '0 auto'
-          }}></div>
-          <p style={{ marginTop: '1rem', color: '#718096' }}>Loading...</p>
+          <div 
+            role="status"
+            aria-label="Loading user data"
+            style={{ 
+              border: '4px solid #e2e8f0',
+              borderTop: '4px solid #ff6b35',
+              borderRadius: '50%',
+              width: '40px',
+              height: '40px',
+              animation: 'spin 2s linear infinite',
+              margin: '0 auto'
+            }}
+          ></div>
+          <p style={{ marginTop: '1rem', color: '#495057' /* Better contrast */ }}>
+            <span className="sr-only">Please wait.</span>
+            Loading...
+          </p>
         </div>
       ) : (
         <>
