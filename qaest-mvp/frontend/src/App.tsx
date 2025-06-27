@@ -6,7 +6,7 @@ import TestCaseForm from './components/TestCaseForm';
 import TestCaseCard from './components/TestCaseCard';
 import PermissionManager from './components/PermissionManager';
 import NotificationCenter from './components/NotificationCenter';
-import { API_ENDPOINTS } from './config';
+import { API_ENDPOINTS, API_BASE_URL } from './config';
 
 interface TestStep {
   stepNumber: number;
