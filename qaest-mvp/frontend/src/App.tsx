@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import UserApprovalPanel from './components/UserApprovalPanel';
+import TestCaseForm from './components/TestCaseForm';
+import TestCaseCard from './components/TestCaseCard';
+import PermissionManager from './components/PermissionManager';
+import NotificationCenter from './components/NotificationCenter';
 import { API_ENDPOINTS } from './config';
+
+interface TestStep {
+  stepNumber: number;
+  action: string;
+  expectedResult: string;
+}
 
 interface TestCase {
   id: string;
@@ -13,8 +23,21 @@ interface TestCase {
   module: string;
   appType: string;
   osType: string;
+  prerequisites?: string;
+  testSteps?: TestStep[];
+  expectedResults?: string;
+  testDataRequirements?: string;
+  environmentRequirements?: string;
+  estimatedTime?: number;
+  tags?: string[];
+  epicId?: string;
+  prdLink?: string;
+  relatedRequirements?: string;
   createdBy: string;
   createdAt: string;
+  lastModifiedBy?: string;
+  lastModifiedAt?: string;
+  version?: number;
 }
 
 interface User {
@@ -59,7 +82,7 @@ const App: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'approvals'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'approvals' | 'permissions'>('dashboard');
   const [loginForm, setLoginForm] = useState({
     username: '',
     password: ''
@@ -74,12 +97,6 @@ const App: React.FC = () => {
   });
   const [loginLoading, setLoginLoading] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
-  const [newTestCase, setNewTestCase] = useState({
-    title: '',
-    description: '',
-    priority: 'medium',
-    category: '',
-  });
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     priorities: [],
     creators: [],
@@ -291,16 +308,14 @@ const App: React.FC = () => {
     }
   };
 
-  const handleCreateTestCase = async () => {
-    if (!newTestCase.title.trim()) {
-      setError('Test case title is required');
-      return;
-    }
-
+  const handleCreateTestCase = async (formData: any) => {
     try {
       const testCaseData = {
-        ...newTestCase,
-        createdBy: currentUser?.username || 'unknown'
+        ...formData,
+        createdBy: currentUser?.username || 'unknown',
+        lastModifiedBy: currentUser?.username || 'unknown',
+        lastModifiedAt: new Date().toISOString(),
+        version: 1
       };
 
       const response = await fetch(API_ENDPOINTS.testCases, {
@@ -318,7 +333,6 @@ const App: React.FC = () => {
         await fetchTestCases(); // Refresh the list
         await fetchFilterOptions(); // Update filter options
         setShowCreateForm(false);
-        setNewTestCase({ title: '', description: '', priority: 'medium', category: '' });
         setError(null);
       } else {
         setError(data.message || 'Failed to create test case');
@@ -349,27 +363,6 @@ const App: React.FC = () => {
     });
     // Fetch without filters
     setTimeout(() => fetchTestCases(), 100);
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'critical': return '#e53e3e';
-      case 'high': return '#ed8936';
-      case 'medium': return '#ff6b35';
-      case 'low': return '#38a169';
-      default: return '#718096';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return '#38a169';
-      case 'draft': return '#718096';
-      case 'passed': return '#38a169';
-      case 'failed': return '#e53e3e';
-      case 'blocked': return '#ed8936';
-      default: return '#718096';
-    }
   };
 
   const formatDate = (dateString: string) => {
@@ -785,6 +778,23 @@ const App: React.FC = () => {
               Dashboard
             </button>
             
+            {/* Permissions button - visible to all users */}
+            <button
+              onClick={() => setCurrentView('permissions')}
+              style={{
+                backgroundColor: currentView === 'permissions' ? 'rgba(255,255,255,0.2)' : 'transparent',
+                color: 'white',
+                border: '1px solid rgba(255,255,255,0.3)',
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              Permissions
+            </button>
+            
             {/* Show User Management only for QA Leads and Project Managers */}
             {currentUser && (currentUser.role === 'qa_lead' || currentUser.role === 'project_manager') && (
               <button
@@ -817,6 +827,14 @@ const App: React.FC = () => {
             }}>
               {currentUser.role.replace('_', ' ').toUpperCase()}
             </span>
+            <NotificationCenter 
+              authToken={authToken!} 
+              currentUser={currentUser}
+              onNavigate={(view, params) => {
+                setCurrentView(view as any);
+                // Handle additional params if needed
+              }}
+            />
             <button
               onClick={handleLogout}
               style={{
@@ -865,6 +883,8 @@ const App: React.FC = () => {
         {/* Conditional rendering based on current view */}
         {currentView === 'approvals' ? (
           <UserApprovalPanel authToken={authToken!} currentUser={currentUser} />
+        ) : currentView === 'permissions' ? (
+          <PermissionManager authToken={authToken!} currentUser={currentUser} />
         ) : (
           <>
         {/* Dashboard Header */}
@@ -1164,63 +1184,23 @@ const App: React.FC = () => {
           gap: '1rem'
         }}>
           {testCases.map((testCase) => (
-            <div key={testCase.id} style={{ 
-              backgroundColor: 'white', 
-              padding: '1.5rem', 
-                  borderRadius: '12px', 
-                  boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
-                  border: '1px solid #e2e8f0',
-                  transition: 'all 0.2s ease'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                    <h4 style={{ margin: 0, color: '#2d3748', fontSize: '1.1rem', fontWeight: '600' }}>{testCase.title}</h4>
-                <span style={{ 
-                      backgroundColor: '#f7fafc', 
-                  padding: '0.25rem 0.5rem', 
-                      borderRadius: '6px',
-                  fontSize: '0.8rem',
-                      color: '#718096',
-                      border: '1px solid #e2e8f0'
-                }}>
-                  {testCase.id}
-                </span>
-              </div>
-              
-                  <p style={{ margin: '0 0 1rem 0', color: '#718096', fontSize: '0.9rem', lineHeight: '1.5' }}>
-                {testCase.description}
-              </p>
-              
-              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                <span style={{ 
-                  backgroundColor: getPriorityColor(testCase.priority), 
-                  color: 'white',
-                      padding: '0.25rem 0.75rem', 
-                      borderRadius: '6px',
-                      fontSize: '0.8rem',
-                      fontWeight: '500'
-                }}>
-                  {testCase.priority}
-                </span>
-                <span style={{ 
-                  backgroundColor: getStatusColor(testCase.status), 
-                  color: 'white',
-                      padding: '0.25rem 0.75rem', 
-                      borderRadius: '6px',
-                      fontSize: '0.8rem',
-                      fontWeight: '500'
-                }}>
-                  {testCase.status}
-                </span>
-              </div>
-              
-                  <div style={{ fontSize: '0.8rem', color: '#718096', lineHeight: '1.4' }}>
-                <p style={{ margin: '0.25rem 0' }}>Category: {testCase.category}</p>
-                <p style={{ margin: '0.25rem 0' }}>Module: {testCase.module}</p>
-                <p style={{ margin: '0.25rem 0' }}>App Type: {testCase.appType} | OS: {testCase.osType}</p>
-                <p style={{ margin: '0.25rem 0' }}>Created by: {testCase.createdBy}</p>
-                    <p style={{ margin: '0.25rem 0' }}>Created: {formatDate(testCase.createdAt)}</p>
-              </div>
-            </div>
+            <TestCaseCard
+              key={testCase.id}
+              testCase={testCase}
+              currentUser={currentUser}
+              onEdit={(tc) => {
+                // TODO: Implement edit functionality
+                console.log('Edit test case:', tc);
+              }}
+              onDelete={async (id) => {
+                // TODO: Implement delete functionality
+                console.log('Delete test case:', id);
+              }}
+              onExecute={(tc) => {
+                // TODO: Implement execute functionality
+                console.log('Execute test case:', tc);
+              }}
+            />
           ))}
         </div>
 
@@ -1245,119 +1225,21 @@ const App: React.FC = () => {
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            zIndex: 1000
+            zIndex: 1000,
+            padding: '20px',
+            overflow: 'auto'
           }}>
             <div style={{
-              backgroundColor: 'white',
-              padding: '2rem',
-              borderRadius: '8px',
-              width: '90%',
-              maxWidth: '500px',
-              maxHeight: '80vh',
-              overflow: 'auto'
+              width: '100%',
+              maxWidth: '1000px',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              borderRadius: '8px'
             }}>
-              <h3 style={{ margin: '0 0 1rem 0' }}>Create New Test Case</h3>
-              
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Title:</label>
-                <input
-                  type="text"
-                  value={newTestCase.title}
-                  onChange={(e) => setNewTestCase({ ...newTestCase, title: e.target.value })}
-                  placeholder="Enter test case title"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '1rem'
-                  }}
-                />
-              </div>
-              
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Description:</label>
-                <textarea
-                  value={newTestCase.description}
-                  onChange={(e) => setNewTestCase({ ...newTestCase, description: e.target.value })}
-                  rows={3}
-                  placeholder="Enter test case description"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '1rem',
-                    resize: 'vertical'
-                  }}
-                />
-              </div>
-              
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Priority:</label>
-                <select
-                  value={newTestCase.priority}
-                  onChange={(e) => setNewTestCase({ ...newTestCase, priority: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '1rem'
-                  }}
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="critical">Critical</option>
-                </select>
-              </div>
-              
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Category:</label>
-                <input
-                  type="text"
-                  value={newTestCase.category}
-                  onChange={(e) => setNewTestCase({ ...newTestCase, category: e.target.value })}
-                  placeholder="Enter test case category"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '1rem'
-                  }}
-                />
-              </div>
-              
-              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                <button 
-                  onClick={() => setShowCreateForm(false)}
-                  style={{
-                    backgroundColor: 'transparent',
-                    color: '#666',
-                    border: '1px solid #ddd',
-                    padding: '0.75rem 1.5rem',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={handleCreateTestCase}
-                  style={{
-                    backgroundColor: '#1976d2',
-                    color: 'white',
-                    border: 'none',
-                    padding: '0.75rem 1.5rem',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Create
-                </button>
-              </div>
+              <TestCaseForm
+                onSubmit={handleCreateTestCase}
+                onCancel={() => setShowCreateForm(false)}
+              />
             </div>
           </div>
         )}

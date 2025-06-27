@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API_ENDPOINTS, API_BASE_URL } from '../config';
+import AuditLog from './AuditLog';
 
 interface PendingUser {
   id: string;
@@ -38,7 +39,7 @@ const UserApprovalPanel: React.FC<UserApprovalPanelProps> = ({ authToken, curren
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'pending' | 'all'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'all' | 'audit'>('pending');
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [newRole, setNewRole] = useState('');
@@ -47,9 +48,10 @@ const UserApprovalPanel: React.FC<UserApprovalPanelProps> = ({ authToken, curren
   useEffect(() => {
     if (activeTab === 'pending') {
       fetchPendingUsers();
-    } else {
+    } else if (activeTab === 'all') {
       fetchAllUsers();
     }
+    // For 'audit' tab, the AuditLog component handles its own data fetching
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
@@ -264,7 +266,7 @@ const UserApprovalPanel: React.FC<UserApprovalPanelProps> = ({ authToken, curren
             border: '2px solid #ff6b35',
             borderLeft: 'none',
             padding: '0.75rem 1.5rem',
-            borderRadius: '0 8px 8px 0',
+            borderRadius: activeTab === 'audit' ? '0' : '0 8px 8px 0',
             cursor: 'pointer',
             fontSize: '1rem',
             fontWeight: '500',
@@ -272,6 +274,23 @@ const UserApprovalPanel: React.FC<UserApprovalPanelProps> = ({ authToken, curren
           }}
         >
           All Users ({allUsers.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('audit')}
+          style={{
+            backgroundColor: activeTab === 'audit' ? '#ff6b35' : 'transparent',
+            color: activeTab === 'audit' ? 'white' : '#ff6b35',
+            border: '2px solid #ff6b35',
+            borderLeft: 'none',
+            padding: '0.75rem 1.5rem',
+            borderRadius: '0 8px 8px 0',
+            cursor: 'pointer',
+            fontSize: '1rem',
+            fontWeight: '500',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          Audit Trail
         </button>
       </div>
 
@@ -485,6 +504,15 @@ const UserApprovalPanel: React.FC<UserApprovalPanelProps> = ({ authToken, curren
                 ))}
               </div>
             </div>
+          )}
+
+          {/* Audit Trail Tab */}
+          {activeTab === 'audit' && (
+            <AuditLog 
+              authToken={authToken} 
+              currentUser={currentUser}
+              filterByEntity="user"
+            />
           )}
         </>
       )}

@@ -884,6 +884,486 @@ app.post('/api/test-cases/demo', (req, res) => {
   }
 });
 
+// Permission Management Endpoints
+
+// Get my permission requests
+app.get('/api/permissions/my-requests', authenticateToken, (req, res) => {
+  const data = readData();
+  const userId = req.user.id;
+  
+  const myRequests = (data.permissionRequests || [])
+    .filter(request => request.requesterId === userId)
+    .map(request => {
+      const testCase = data.testCases.find(tc => tc.id === request.testCaseId);
+      const owner = data.users.find(u => u.id === request.ownerId);
+      return {
+        ...request,
+        testCaseTitle: testCase ? testCase.title : 'Unknown Test Case',
+        ownerName: owner ? `${owner.firstName} ${owner.lastName}` : 'Unknown User',
+        requesterName: req.user.firstName + ' ' + req.user.lastName
+      };
+    })
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  
+  res.json({
+    success: true,
+    data: myRequests
+  });
+});
+
+// Get pending approvals (requests where I'm the owner)
+app.get('/api/permissions/pending-approvals', authenticateToken, (req, res) => {
+  const data = readData();
+  const userId = req.user.id;
+  
+  const pendingApprovals = (data.permissionRequests || [])
+    .filter(request => request.ownerId === userId)
+    .map(request => {
+      const testCase = data.testCases.find(tc => tc.id === request.testCaseId);
+      const requester = data.users.find(u => u.id === request.requesterId);
+      return {
+        ...request,
+        testCaseTitle: testCase ? testCase.title : 'Unknown Test Case',
+        requesterName: requester ? `${requester.firstName} ${requester.lastName}` : 'Unknown User',
+        ownerName: req.user.firstName + ' ' + req.user.lastName
+      };
+    })
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  
+  res.json({
+    success: true,
+    data: pendingApprovals
+  });
+});
+
+// Request permission
+app.post('/api/permissions/request', authenticateToken, (req, res) => {
+  const { testCaseId, permissionType, reason } = req.body;
+  
+  if (!testCaseId || !permissionType || !reason) {
+    return res.status(400).json({
+      success: false,
+      message: 'Test case ID, permission type, and reason are required'
+    });
+  }
+  
+  const data = readData();
+  const testCase = data.testCases.find(tc => tc.id === testCaseId);
+  
+  if (!testCase) {
+    return res.status(404).json({
+      success: false,
+      message: 'Test case not found'
+    });
+  }
+  
+  // Check if user is already the owner
+  if (testCase.createdBy === req.user.username) {
+    return res.status(400).json({
+      success: false,
+      message: 'You already own this test case'
+    });
+  }
+  
+  // Check for existing pending request
+  const existingRequest = (data.permissionRequests || []).find(
+    r => r.testCaseId === testCaseId && 
+         r.requesterId === req.user.id && 
+         r.status === 'pending'
+  );
+  
+  if (existingRequest) {
+    return res.status(400).json({
+      success: false,
+      message: 'You already have a pending request for this test case'
+    });
+  }
+  
+  // Find owner
+  const owner = data.users.find(u => u.username === testCase.createdBy);
+  if (!owner) {
+    return res.status(404).json({
+      success: false,
+      message: 'Test case owner not found'
+    });
+  }
+  
+  // Create permission request
+  const newRequest = {
+    id: 'PR-' + Date.now(),
+    testCaseId,
+    requesterId: req.user.id,
+    ownerId: owner.id,
+    permissionType,
+    status: 'pending',
+    reason,
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
+    createdAt: new Date().toISOString(),
+    resolvedAt: null,
+    resolvedBy: null,
+    resolutionNote: null
+  };
+  
+  if (!data.permissionRequests) {
+    data.permissionRequests = [];
+  }
+  data.permissionRequests.push(newRequest);
+  
+  // Add notification for owner
+  if (!data.notifications) {
+    data.notifications = [];
+  }
+  data.notifications.push({
+    id: 'N-' + Date.now(),
+    userId: owner.id,
+    type: 'permission_request',
+    title: 'New Permission Request',
+    message: `${req.user.firstName} ${req.user.lastName} has requested ${permissionType} permission for "${testCase.title}"`,
+    relatedEntityType: 'permission_request',
+    relatedEntityId: newRequest.id,
+    isRead: false,
+    createdAt: new Date().toISOString(),
+    actionUrl: '/permissions',
+    actionLabel: 'View Request'
+  });
+  
+  if (writeData(data)) {
+    res.json({
+      success: true,
+      message: 'Permission request submitted successfully',
+      data: newRequest
+    });
+  } else {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to submit permission request'
+    });
+  }
+});
+
+// Approve permission request
+app.put('/api/permissions/:requestId/approve', authenticateToken, (req, res) => {
+  const { requestId } = req.params;
+  const { resolutionNote } = req.body;
+  
+  const data = readData();
+  const request = (data.permissionRequests || []).find(r => r.id === requestId);
+  
+  if (!request) {
+    return res.status(404).json({
+      success: false,
+      message: 'Permission request not found'
+    });
+  }
+  
+  // Check if user is the owner
+  if (request.ownerId !== req.user.id) {
+    return res.status(403).json({
+      success: false,
+      message: 'You are not authorized to approve this request'
+    });
+  }
+  
+  // Check if request is pending
+  if (request.status !== 'pending') {
+    return res.status(400).json({
+      success: false,
+      message: 'This request has already been resolved'
+    });
+  }
+  
+  // Update request
+  request.status = 'approved';
+  request.resolvedAt = new Date().toISOString();
+  request.resolvedBy = req.user.id;
+  request.resolutionNote = resolutionNote || null;
+  
+  // Add notification for requester
+  const requester = data.users.find(u => u.id === request.requesterId);
+  if (!data.notifications) {
+    data.notifications = [];
+  }
+  data.notifications.push({
+    id: 'N-' + Date.now(),
+    userId: request.requesterId,
+    type: 'success',
+    title: 'Permission Request Approved',
+    message: `Your ${request.permissionType} request has been approved by ${req.user.firstName} ${req.user.lastName}`,
+    relatedEntityType: 'permission_request',
+    relatedEntityId: request.id,
+    isRead: false,
+    createdAt: new Date().toISOString()
+  });
+  
+  // Add audit log entry
+  if (!data.auditLog) {
+    data.auditLog = [];
+  }
+  data.auditLog.push({
+    id: 'AL-' + Date.now(),
+    action: 'permission_granted',
+    entityType: 'permission_request',
+    entityId: request.id,
+    performedBy: req.user.id,
+    performedByName: `${req.user.firstName} ${req.user.lastName}`,
+    targetUser: request.requesterId,
+    targetUserName: requester ? `${requester.firstName} ${requester.lastName}` : 'Unknown User',
+    details: {
+      permissionType: request.permissionType,
+      testCaseId: request.testCaseId,
+      resolutionNote
+    },
+    createdAt: new Date().toISOString()
+  });
+  
+  if (writeData(data)) {
+    res.json({
+      success: true,
+      message: 'Permission request approved successfully'
+    });
+  } else {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to approve permission request'
+    });
+  }
+});
+
+// Deny permission request
+app.put('/api/permissions/:requestId/deny', authenticateToken, (req, res) => {
+  const { requestId } = req.params;
+  const { resolutionNote } = req.body;
+  
+  const data = readData();
+  const request = (data.permissionRequests || []).find(r => r.id === requestId);
+  
+  if (!request) {
+    return res.status(404).json({
+      success: false,
+      message: 'Permission request not found'
+    });
+  }
+  
+  // Check if user is the owner
+  if (request.ownerId !== req.user.id) {
+    return res.status(403).json({
+      success: false,
+      message: 'You are not authorized to deny this request'
+    });
+  }
+  
+  // Check if request is pending
+  if (request.status !== 'pending') {
+    return res.status(400).json({
+      success: false,
+      message: 'This request has already been resolved'
+    });
+  }
+  
+  // Update request
+  request.status = 'denied';
+  request.resolvedAt = new Date().toISOString();
+  request.resolvedBy = req.user.id;
+  request.resolutionNote = resolutionNote || null;
+  
+  // Add notification for requester
+  const requester = data.users.find(u => u.id === request.requesterId);
+  if (!data.notifications) {
+    data.notifications = [];
+  }
+  data.notifications.push({
+    id: 'N-' + Date.now(),
+    userId: request.requesterId,
+    type: 'error',
+    title: 'Permission Request Denied',
+    message: `Your ${request.permissionType} request has been denied by ${req.user.firstName} ${req.user.lastName}${resolutionNote ? ': ' + resolutionNote : ''}`,
+    relatedEntityType: 'permission_request',
+    relatedEntityId: request.id,
+    isRead: false,
+    createdAt: new Date().toISOString()
+  });
+  
+  // Add audit log entry
+  if (!data.auditLog) {
+    data.auditLog = [];
+  }
+  data.auditLog.push({
+    id: 'AL-' + Date.now(),
+    action: 'permission_denied',
+    entityType: 'permission_request',
+    entityId: request.id,
+    performedBy: req.user.id,
+    performedByName: `${req.user.firstName} ${req.user.lastName}`,
+    targetUser: request.requesterId,
+    targetUserName: requester ? `${requester.firstName} ${requester.lastName}` : 'Unknown User',
+    details: {
+      permissionType: request.permissionType,
+      testCaseId: request.testCaseId,
+      resolutionNote
+    },
+    createdAt: new Date().toISOString()
+  });
+  
+  if (writeData(data)) {
+    res.json({
+      success: true,
+      message: 'Permission request denied'
+    });
+  } else {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to deny permission request'
+    });
+  }
+});
+
+// Get notifications
+app.get('/api/notifications', authenticateToken, (req, res) => {
+  const data = readData();
+  const userId = req.user.id;
+  
+  const notifications = (data.notifications || [])
+    .filter(n => n.userId === userId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 50); // Return latest 50 notifications
+  
+  res.json({
+    success: true,
+    data: notifications
+  });
+});
+
+// Mark notification as read
+app.put('/api/notifications/:notificationId/read', authenticateToken, (req, res) => {
+  const { notificationId } = req.params;
+  const data = readData();
+  
+  const notification = (data.notifications || []).find(
+    n => n.id === notificationId && n.userId === req.user.id
+  );
+  
+  if (!notification) {
+    return res.status(404).json({
+      success: false,
+      message: 'Notification not found'
+    });
+  }
+  
+  notification.isRead = true;
+  
+  if (writeData(data)) {
+    res.json({
+      success: true,
+      message: 'Notification marked as read'
+    });
+  } else {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update notification'
+    });
+  }
+});
+
+// Mark all notifications as read
+app.put('/api/notifications/mark-all-read', authenticateToken, (req, res) => {
+  const data = readData();
+  const userId = req.user.id;
+  
+  if (data.notifications) {
+    data.notifications.forEach(n => {
+      if (n.userId === userId) {
+        n.isRead = true;
+      }
+    });
+  }
+  
+  if (writeData(data)) {
+    res.json({
+      success: true,
+      message: 'All notifications marked as read'
+    });
+  } else {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update notifications'
+    });
+  }
+});
+
+// Delete notification
+app.delete('/api/notifications/:notificationId', authenticateToken, (req, res) => {
+  const { notificationId } = req.params;
+  const data = readData();
+  
+  if (!data.notifications) {
+    return res.status(404).json({
+      success: false,
+      message: 'Notification not found'
+    });
+  }
+  
+  const notificationIndex = data.notifications.findIndex(
+    n => n.id === notificationId && n.userId === req.user.id
+  );
+  
+  if (notificationIndex === -1) {
+    return res.status(404).json({
+      success: false,
+      message: 'Notification not found'
+    });
+  }
+  
+  data.notifications.splice(notificationIndex, 1);
+  
+  if (writeData(data)) {
+    res.json({
+      success: true,
+      message: 'Notification deleted'
+    });
+  } else {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete notification'
+    });
+  }
+});
+
+// Get audit log
+app.get('/api/audit-log', authenticateToken, (req, res) => {
+  const { action, entityType, performedBy, dateFrom, dateTo, entityId } = req.query;
+  const data = readData();
+  
+  let auditEntries = data.auditLog || [];
+  
+  // Apply filters
+  if (action) {
+    auditEntries = auditEntries.filter(entry => entry.action === action);
+  }
+  if (entityType) {
+    auditEntries = auditEntries.filter(entry => entry.entityType === entityType);
+  }
+  if (performedBy) {
+    auditEntries = auditEntries.filter(entry => entry.performedBy === performedBy);
+  }
+  if (entityId) {
+    auditEntries = auditEntries.filter(entry => entry.entityId === entityId);
+  }
+  if (dateFrom) {
+    auditEntries = auditEntries.filter(entry => new Date(entry.createdAt) >= new Date(dateFrom));
+  }
+  if (dateTo) {
+    auditEntries = auditEntries.filter(entry => new Date(entry.createdAt) <= new Date(dateTo));
+  }
+  
+  // Sort by date descending
+  auditEntries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  
+  res.json({
+    success: true,
+    data: auditEntries.slice(0, 100) // Return latest 100 entries
+  });
+});
+
 const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, () => {
@@ -900,6 +1380,22 @@ app.listen(PORT, () => {
   console.log(`✅ Approve User: PUT http://localhost:${PORT}/api/users/:id/approve`);
   console.log(`❌ Reject User: PUT http://localhost:${PORT}/api/users/:id/reject`);
   console.log(`🔄 Update Role: PUT http://localhost:${PORT}/api/users/:id/role`);
+  console.log('');
+  console.log('📋 Permission Management:');
+  console.log(`🔐 My Requests: GET http://localhost:${PORT}/api/permissions/my-requests`);
+  console.log(`📥 Pending Approvals: GET http://localhost:${PORT}/api/permissions/pending-approvals`);
+  console.log(`📤 Request Permission: POST http://localhost:${PORT}/api/permissions/request`);
+  console.log(`✅ Approve Request: PUT http://localhost:${PORT}/api/permissions/:id/approve`);
+  console.log(`❌ Deny Request: PUT http://localhost:${PORT}/api/permissions/:id/deny`);
+  console.log('');
+  console.log('🔔 Notifications:');
+  console.log(`📬 Get Notifications: GET http://localhost:${PORT}/api/notifications`);
+  console.log(`✓ Mark as Read: PUT http://localhost:${PORT}/api/notifications/:id/read`);
+  console.log(`✓ Mark All Read: PUT http://localhost:${PORT}/api/notifications/mark-all-read`);
+  console.log(`🗑️ Delete Notification: DELETE http://localhost:${PORT}/api/notifications/:id`);
+  console.log('');
+  console.log('📜 Audit Trail:');
+  console.log(`📊 Get Audit Log: GET http://localhost:${PORT}/api/audit-log`);
   console.log('================================');
   console.log('✅ Ready to accept requests!');
   console.log('');
@@ -914,4 +1410,9 @@ app.listen(PORT, () => {
   console.log('- Leads and Project Managers can approve/reject users');
   console.log('- Role changes can be made by Leads and Project Managers');
   console.log('- Approval workflow tracks all changes with audit trail');
+  console.log('');
+  console.log('🔐 Permission System:');
+  console.log('- Users can request edit/delete permissions for test cases they don\'t own');
+  console.log('- Test case owners receive notifications and can approve/deny requests');
+  console.log('- All permission changes are tracked in the audit log');
 });
