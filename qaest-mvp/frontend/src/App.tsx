@@ -85,6 +85,7 @@ const App: React.FC = () => {
   const [showRegister, setShowRegister] = useState(false);
   const [currentView, setCurrentView] = useState<'dashboard' | 'approvals' | 'permissions'>('dashboard');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [editingTestCase, setEditingTestCase] = useState<TestCase | null>(null);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -361,7 +362,7 @@ const App: React.FC = () => {
       };
 
       const url = isUpdate 
-        ? `${API_BASE_URL}/api/test-cases/${editingTestCase.id}`
+        ? `${API_BASE_URL}/api/test-cases/${editingTestCase?.id}`
         : API_ENDPOINTS.testCases;
       
       const response = await fetch(url, {
