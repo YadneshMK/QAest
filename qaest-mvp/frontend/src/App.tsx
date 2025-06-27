@@ -85,6 +85,14 @@ const App: React.FC = () => {
   const [showRegister, setShowRegister] = useState(false);
   const [currentView, setCurrentView] = useState<'dashboard' | 'approvals' | 'permissions'>('dashboard');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalCount: 0,
+    limit: 10,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
   const [loginForm, setLoginForm] = useState({
     username: '',
     password: ''
@@ -298,6 +306,11 @@ const App: React.FC = () => {
   const buildFilterQuery = () => {
     const params = new URLSearchParams();
     
+    // Add pagination params
+    params.append('page', pagination.currentPage.toString());
+    params.append('limit', pagination.limit.toString());
+    
+    // Add filter params
     Object.entries(filters).forEach(([key, value]) => {
       if (value && value.trim() !== '') {
         params.append(key, value);
@@ -307,17 +320,24 @@ const App: React.FC = () => {
     return params.toString();
   };
 
-  const fetchTestCases = async () => {
+  const fetchTestCases = async (page = pagination.currentPage) => {
     try {
       setLoading(true);
+      
+      // Update current page before fetching
+      if (page !== pagination.currentPage) {
+        setPagination(prev => ({ ...prev, currentPage: page }));
+      }
+      
       const queryString = buildFilterQuery();
-      const url = `${API_ENDPOINTS.testCases}${queryString ? '?' + queryString : ''}`;
+      const url = `${API_ENDPOINTS.testCases}?${queryString}`;
       
       const response = await fetch(url);
       const data = await response.json();
       
       if (data.success) {
         setTestCases(data.data.testCases);
+        setPagination(data.data.pagination);
         setError(null);
       } else {
         setError('Failed to load test cases');
@@ -331,16 +351,21 @@ const App: React.FC = () => {
 
   const handleCreateTestCase = async (formData: any) => {
     try {
+      const isUpdate = !!editingTestCase;
       const testCaseData = {
         ...formData,
-        createdBy: currentUser?.username || 'unknown',
+        createdBy: editingTestCase?.createdBy || currentUser?.username || 'unknown',
         lastModifiedBy: currentUser?.username || 'unknown',
         lastModifiedAt: new Date().toISOString(),
-        version: 1
+        version: (editingTestCase?.version || 0) + 1
       };
 
-      const response = await fetch(API_ENDPOINTS.testCases, {
-        method: 'POST',
+      const url = isUpdate 
+        ? `${API_BASE_URL}/api/test-cases/${editingTestCase.id}`
+        : API_ENDPOINTS.testCases;
+      
+      const response = await fetch(url, {
+        method: isUpdate ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`
@@ -351,15 +376,18 @@ const App: React.FC = () => {
       const data = await response.json();
       
       if (data.success) {
+        setSuccessMessage(isUpdate ? 'Test case updated successfully' : 'Test case created successfully');
+        setTimeout(() => setSuccessMessage(null), 3000);
         await fetchTestCases(); // Refresh the list
         await fetchFilterOptions(); // Update filter options
         setShowCreateForm(false);
+        setEditingTestCase(null);
         setError(null);
       } else {
-        setError(data.message || 'Failed to create test case');
+        setError(data.message || `Failed to ${isUpdate ? 'update' : 'create'} test case`);
       }
     } catch (err) {
-      setError('Failed to create test case');
+      setError(`Failed to ${editingTestCase ? 'update' : 'create'} test case`);
     }
   };
 
@@ -368,7 +396,9 @@ const App: React.FC = () => {
   };
 
   const applyFilters = () => {
-    fetchTestCases();
+    // Reset to first page when applying filters
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+    fetchTestCases(1);
     setShowFilters(false);
   };
 
@@ -1324,12 +1354,32 @@ const App: React.FC = () => {
               testCase={testCase}
               currentUser={currentUser}
               onEdit={(tc) => {
-                // TODO: Implement edit functionality
-                console.log('Edit test case:', tc);
+                setEditingTestCase(tc);
+                setShowCreateForm(true);
               }}
               onDelete={async (id) => {
-                // TODO: Implement delete functionality
-                console.log('Delete test case:', id);
+                if (window.confirm('Are you sure you want to delete this test case?')) {
+                  try {
+                    const response = await fetch(`${API_BASE_URL}/api/test-cases/${id}`, {
+                      method: 'DELETE',
+                      headers: {
+                        'Authorization': `Bearer ${authToken}`
+                      }
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                      setSuccessMessage('Test case deleted successfully');
+                      setTimeout(() => setSuccessMessage(null), 3000);
+                      await fetchTestCases(); // Refresh the list
+                    } else {
+                      setError(data.message || 'Failed to delete test case');
+                    }
+                  } catch (error) {
+                    setError('Failed to delete test case. Please try again.');
+                  }
+                }
               }}
               onExecute={(tc) => {
                 // TODO: Implement execute functionality
@@ -1345,6 +1395,63 @@ const App: React.FC = () => {
                 <p>Create your first test case or adjust your filters</p>
           </div>
             )}
+        
+        {/* Pagination Controls */}
+        {pagination.totalPages > 1 && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '1rem',
+            marginTop: '2rem',
+            padding: '1rem'
+          }}>
+            <button
+              onClick={() => fetchTestCases(pagination.currentPage - 1)}
+              disabled={!pagination.hasPrevPage}
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: pagination.hasPrevPage ? '#ff6b35' : '#e0e0e0',
+                color: pagination.hasPrevPage ? 'white' : '#999',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: pagination.hasPrevPage ? 'pointer' : 'not-allowed',
+                fontSize: '0.9rem',
+                fontWeight: '500'
+              }}
+            >
+              Previous
+            </button>
+            
+            <span style={{ 
+              fontSize: '0.9rem', 
+              color: '#495057',
+              fontWeight: '500'
+            }}>
+              Page {pagination.currentPage} of {pagination.totalPages} 
+              <span style={{ marginLeft: '0.5rem', color: '#6c757d' }}>
+                ({pagination.totalCount} total)
+              </span>
+            </span>
+            
+            <button
+              onClick={() => fetchTestCases(pagination.currentPage + 1)}
+              disabled={!pagination.hasNextPage}
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: pagination.hasNextPage ? '#ff6b35' : '#e0e0e0',
+                color: pagination.hasNextPage ? 'white' : '#999',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: pagination.hasNextPage ? 'pointer' : 'not-allowed',
+                fontSize: '0.9rem',
+                fontWeight: '500'
+              }}
+            >
+              Next
+            </button>
+          </div>
+        )}
           </>
         )}
 
@@ -1372,8 +1479,12 @@ const App: React.FC = () => {
               borderRadius: '8px'
             }}>
               <TestCaseForm
+                initialData={editingTestCase || undefined}
                 onSubmit={handleCreateTestCase}
-                onCancel={() => setShowCreateForm(false)}
+                onCancel={() => {
+                  setShowCreateForm(false);
+                  setEditingTestCase(null);
+                }}
               />
             </div>
           </div>

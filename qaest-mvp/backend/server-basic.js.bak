@@ -6,7 +6,6 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const lockfile = require('proper-lockfile');
 const rateLimit = require('express-rate-limit');
-const { body, validationResult } = require('express-validator');
 
 // JWT Secret - In production, use environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'qaest-secret-key-change-in-production';
@@ -73,36 +72,6 @@ app.use(generalLimiter); // Apply general rate limiting to all routes
 
 // Simple file-based storage for demo
 const dataFile = path.join(__dirname, 'data.json');
-
-// Simple in-memory cache
-let dataCache = null;
-let cacheTimestamp = 0;
-const CACHE_TTL = 5000; // 5 seconds cache TTL
-
-// Indexes for efficient lookups
-let userIndex = new Map(); // username -> user
-let testCaseIndex = new Map(); // testCaseId -> testCase
-
-// Build indexes from data
-const buildIndexes = (data) => {
-  // Clear existing indexes
-  userIndex.clear();
-  testCaseIndex.clear();
-  
-  // Build user index
-  if (data.users) {
-    data.users.forEach(user => {
-      userIndex.set(user.username, user);
-    });
-  }
-  
-  // Build test case index
-  if (data.testCases) {
-    data.testCases.forEach(tc => {
-      testCaseIndex.set(tc.id, tc);
-    });
-  }
-};
 
 // Initialize data file if it doesn't exist
 const initializeData = async () => {
@@ -204,21 +173,8 @@ const initializeData = async () => {
 // Read data from file
 const readData = async () => {
   try {
-    // Check if cache is still valid
-    const now = Date.now();
-    if (dataCache && (now - cacheTimestamp) < CACHE_TTL) {
-      return JSON.parse(JSON.stringify(dataCache)); // Return deep copy
-    }
-    
-    // Read from file and update cache
     const data = await fs.promises.readFile(dataFile, 'utf8');
-    dataCache = JSON.parse(data);
-    cacheTimestamp = now;
-    
-    // Build indexes for efficient lookups
-    buildIndexes(dataCache);
-    
-    return JSON.parse(JSON.stringify(dataCache)); // Return deep copy
+    return JSON.parse(data);
   } catch (error) {
     console.error('Error reading data file:', error);
     await initializeData();
@@ -243,13 +199,6 @@ const writeData = async (data) => {
     
     // Write data
     await fs.promises.writeFile(dataFile, JSON.stringify(data, null, 2));
-    
-    // Update cache after successful write
-    dataCache = data;
-    cacheTimestamp = Date.now();
-    
-    // Rebuild indexes
-    buildIndexes(dataCache);
     
     // Release lock
     await release();
@@ -317,52 +266,8 @@ const requireRole = (roles) => {
   };
 };
 
-// HTML entities sanitization helper
-const sanitizeHtml = (str) => {
-  if (typeof str !== 'string') return str;
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;');
-};
-
-// Sanitize object recursively
-const sanitizeObject = (obj) => {
-  if (typeof obj !== 'object' || obj === null) {
-    return sanitizeHtml(obj);
-  }
-  
-  if (Array.isArray(obj)) {
-    return obj.map(item => sanitizeObject(item));
-  }
-  
-  const sanitized = {};
-  for (const key in obj) {
-    if (obj.hasOwnProperty(key)) {
-      sanitized[key] = sanitizeObject(obj[key]);
-    }
-  }
-  return sanitized;
-};
-
-// Validation error handler middleware
-const handleValidationErrors = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      message: 'Validation failed',
-      errors: errors.array()
-    });
-  }
-  next();
-};
-
 // Authentication middleware
-const authenticateToken = async (req, res, next) => {
+const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -373,12 +278,17 @@ const authenticateToken = async (req, res, next) => {
     });
   }
 
-  try {
-    // Verify JWT token
-    const decoded = jwt.verify(token, JWT_SECRET);
-    
+  // Verify JWT token
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(403).json({
+        success: false,
+        message: 'Invalid or expired token'
+      });
+    }
+
     // Get fresh user data from database
-    const data = await readData();
+    const data = readData();
     const user = data.users.find(u => u.id === decoded.userId);
     
     if (!user || user.status !== 'active') {
@@ -392,19 +302,13 @@ const authenticateToken = async (req, res, next) => {
     req.user = user;
     req.decoded = decoded;
     next();
-  } catch (err) {
-    return res.status(403).json({
-      success: false,
-      message: 'Invalid or expired token'
-    });
-  }
+  });
 };
 
 // Get user from token
-const getUserFromToken = async (token) => {
+const getUserFromToken = (token, data) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const data = await readData();
     return data.users.find(u => u.id === decoded.userId && u.status === 'active');
   } catch (err) {
     return null;
@@ -412,12 +316,10 @@ const getUserFromToken = async (token) => {
 };
 
 // Initialize data on startup
-(async () => {
-  await initializeData();
-})();
+initializeData();
 
 // Health check endpoint
-app.get('/health', async (req, res) => {
+app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -426,7 +328,7 @@ app.get('/health', async (req, res) => {
 });
 
 // Root endpoint
-app.get('/', async (req, res) => {
+app.get('/', (req, res) => {
   res.json({
     message: 'Welcome to QAest API - Basic Version',
     version: '1.0.0',
@@ -448,50 +350,22 @@ app.get('/', async (req, res) => {
 });
 
 // User registration endpoint
-app.post('/api/auth/register', 
-  authLimiter,
-  [
-    body('username')
-      .trim()
-      .isLength({ min: 3, max: 30 })
-      .withMessage('Username must be between 3 and 30 characters')
-      .matches(/^[a-zA-Z0-9_-]+$/)
-      .withMessage('Username can only contain letters, numbers, hyphens and underscores'),
-    body('password')
-      .isLength({ min: 8 })
-      .withMessage('Password must be at least 8 characters long')
-      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-      .withMessage('Password must contain at least one lowercase letter, one uppercase letter, and one number'),
-    body('email')
-      .trim()
-      .isEmail()
-      .normalizeEmail()
-      .withMessage('Please provide a valid email address'),
-    body('firstName')
-      .trim()
-      .isLength({ min: 1, max: 50 })
-      .withMessage('First name is required and must be less than 50 characters')
-      .matches(/^[a-zA-Z\s'-]+$/)
-      .withMessage('First name can only contain letters, spaces, hyphens and apostrophes'),
-    body('lastName')
-      .trim()
-      .isLength({ min: 1, max: 50 })
-      .withMessage('Last name is required and must be less than 50 characters')
-      .matches(/^[a-zA-Z\s'-]+$/)
-      .withMessage('Last name can only contain letters, spaces, hyphens and apostrophes'),
-    body('role')
-      .optional()
-      .isIn(['qa_lead', 'senior_qa', 'junior_qa', 'project_manager', 'stakeholder'])
-      .withMessage('Invalid role specified')
-  ],
-  handleValidationErrors,
-  async (req, res) => {
+app.post('/api/auth/register', authLimiter, async (req, res) => {
   const { username, password, email, firstName, lastName, role } = req.body;
   
-  // Set default role if not provided
-  const userRole = role || 'junior_qa';
+  // Validation
+  if (!username || !password || !email || !firstName || !lastName) {
+    return res.status(400).json({
+      success: false,
+      message: 'All fields are required: username, password, email, firstName, lastName'
+    });
+  }
 
-  const data = await readData();
+  // Validate role
+  const validRoles = ['qa_lead', 'senior_qa', 'junior_qa', 'project_manager', 'stakeholder'];
+  const userRole = role && validRoles.includes(role) ? role : 'junior_qa';
+
+  const data = readData();
   
   // Check if username already exists
   const existingUser = data.users.find(u => u.username === username);
@@ -604,29 +478,18 @@ app.post('/api/auth/register',
 });
 
 // Login endpoint
-app.post('/api/auth/login', 
-  authLimiter,
-  [
-    body('username')
-      .trim()
-      .notEmpty()
-      .withMessage('Username is required'),
-    body('password')
-      .notEmpty()
-      .withMessage('Password is required')
-  ],
-  handleValidationErrors,
-  async (req, res) => {
+app.post('/api/auth/login', authLimiter, (req, res) => {
   const { username, password } = req.body;
   
-  // Try to use index first for fast lookup
-  let user = userIndex.get(username);
-  
-  // If not in index, do full data read
-  if (!user) {
-    const data = await readData();
-    user = data.users.find(u => u.username === username);
+  if (!username || !password) {
+    return res.status(400).json({
+      success: false,
+      message: 'Username and password are required'
+    });
   }
+  
+  const data = readData();
+  const user = data.users.find(u => u.username === username);
   
   if (!user) {
     return res.status(401).json({
@@ -690,8 +553,8 @@ app.post('/api/auth/login',
 });
 
 // Get pending user approvals (for Leads and Project Managers)
-app.get('/api/users/pending', authenticateToken, requireRole(['qa_lead', 'project_manager']), async (req, res) => {
-  const data = await readData();
+app.get('/api/users/pending', authenticateToken, requireRole(['qa_lead', 'project_manager']), (req, res) => {
+  const data = readData();
   
   // Get current user from middleware
   const currentUser = req.user;
@@ -728,8 +591,8 @@ app.get('/api/users/pending', authenticateToken, requireRole(['qa_lead', 'projec
 });
 
 // Get all users (for admin management)
-app.get('/api/users', authenticateToken, async (req, res) => {
-  const data = await readData();
+app.get('/api/users', authenticateToken, (req, res) => {
+  const data = readData();
   
   // Get current user from middleware
   const currentUser = req.user;
@@ -756,7 +619,7 @@ app.get('/api/users', authenticateToken, async (req, res) => {
 // Approve user
 app.put('/api/users/:id/approve', authenticateToken, requireRole(['qa_lead', 'project_manager']), async (req, res) => {
   const { id } = req.params;
-  const data = await readData();
+  const data = readData();
   
   // Get current user from middleware
   const currentUser = req.user;
@@ -833,20 +696,10 @@ app.put('/api/users/:id/approve', authenticateToken, requireRole(['qa_lead', 'pr
 });
 
 // Reject user
-app.put('/api/users/:id/reject', 
-  authenticateToken, 
-  requireRole(['qa_lead', 'project_manager']),
-  [
-    body('reason')
-      .trim()
-      .isLength({ min: 5, max: 500 })
-      .withMessage('Rejection reason must be between 5 and 500 characters')
-  ],
-  handleValidationErrors,
-  async (req, res) => {
+app.put('/api/users/:id/reject', authenticateToken, requireRole(['qa_lead', 'project_manager']), async (req, res) => {
   const { id } = req.params;
   const { reason } = req.body;
-  const data = await readData();
+  const data = readData();
   
   // Get current user from middleware
   const currentUser = req.user;
@@ -920,23 +773,10 @@ app.put('/api/users/:id/reject',
 });
 
 // Update user role
-app.put('/api/users/:id/role', 
-  authenticateToken,
-  [
-    body('newRole')
-      .isIn(['qa_lead', 'senior_qa', 'junior_qa', 'project_manager', 'stakeholder'])
-      .withMessage('Invalid role specified'),
-    body('reason')
-      .optional()
-      .trim()
-      .isLength({ max: 500 })
-      .withMessage('Reason must be less than 500 characters')
-  ],
-  handleValidationErrors,
-  async (req, res) => {
+app.put('/api/users/:id/role', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { newRole, reason } = req.body;
-  const data = await readData();
+  const data = readData();
   
   // Get current user from middleware
   const currentUser = req.user;
@@ -948,6 +788,13 @@ app.put('/api/users/:id/role',
     });
   }
 
+  const validRoles = ['qa_lead', 'senior_qa', 'junior_qa', 'project_manager', 'stakeholder'];
+  if (!validRoles.includes(newRole)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid role specified'
+    });
+  }
 
   const user = data.users.find(u => u.id === id);
   if (!user) {
@@ -1030,8 +877,8 @@ app.put('/api/users/:id/role',
 });
 
 // Get all test cases with filtering
-app.get('/api/test-cases', async (req, res) => {
-  const data = await readData();
+app.get('/api/test-cases', (req, res) => {
+  const data = readData();
   let testCases = [...data.testCases];
 
   // Apply filters
@@ -1126,8 +973,8 @@ app.get('/api/test-cases', async (req, res) => {
 });
 
 // Get unique filter values for dropdowns
-app.get('/api/test-cases/filters', async (req, res) => {
-  const data = await readData();
+app.get('/api/test-cases/filters', (req, res) => {
+  const data = readData();
   
   const priorities = [...new Set(data.testCases.map(tc => tc.priority))];
   const creators = [...new Set(data.testCases.map(tc => tc.createdBy))];
@@ -1146,85 +993,26 @@ app.get('/api/test-cases/filters', async (req, res) => {
 });
 
 // Create test case
-app.post('/api/test-cases', 
-  createLimiter,
-  [
-    body('title')
-      .trim()
-      .isLength({ min: 5, max: 200 })
-      .withMessage('Title must be between 5 and 200 characters'),
-    body('description')
-      .trim()
-      .isLength({ min: 10, max: 2000 })
-      .withMessage('Description must be between 10 and 2000 characters'),
-    body('priority')
-      .isIn(['critical', 'high', 'medium', 'low'])
-      .withMessage('Priority must be one of: critical, high, medium, low'),
-    body('status')
-      .isIn(['draft', 'active', 'deprecated', 'archived', 'passed', 'failed', 'blocked', 'not_executed'])
-      .withMessage('Invalid status'),
-    body('category')
-      .trim()
-      .notEmpty()
-      .withMessage('Category is required'),
-    body('module')
-      .trim()
-      .notEmpty()
-      .withMessage('Module is required'),
-    body('appType')
-      .isIn(['web', 'mobile', 'desktop', 'api'])
-      .withMessage('App type must be one of: web, mobile, desktop, api'),
-    body('osType')
-      .isIn(['windows', 'macos', 'linux', 'ios', 'android', 'cross_platform'])
-      .withMessage('Invalid OS type'),
-    body('estimatedTime')
-      .optional()
-      .isInt({ min: 1, max: 480 })
-      .withMessage('Estimated time must be between 1 and 480 minutes'),
-    body('tags')
-      .optional()
-      .isArray()
-      .withMessage('Tags must be an array'),
-    body('tags.*')
-      .optional()
-      .isString()
-      .trim()
-      .isLength({ max: 30 })
-      .withMessage('Each tag must be a string with max 30 characters')
-  ],
-  handleValidationErrors,
-  async (req, res) => {
-  const data = await readData();
+app.post('/api/test-cases', createLimiter, async (req, res) => {
+  const data = readData();
   
   // Generate new test case ID
   const existingIds = data.testCases.map(tc => parseInt(tc.id.replace('TC-', ''))).sort((a, b) => b - a);
   const nextId = existingIds.length > 0 ? existingIds[0] + 1 : 1;
   const testCaseId = 'TC-' + String(nextId).padStart(6, '0');
   
-  // Sanitize input data
-  const sanitizedBody = sanitizeObject(req.body);
-  
   const newTestCase = {
     id: testCaseId,
-    title: sanitizedBody.title || 'Untitled Test Case',
-    description: sanitizedBody.description || '',
-    priority: sanitizedBody.priority || 'medium',
-    status: sanitizedBody.status || 'draft',
-    category: sanitizedBody.category || 'General',
-    module: sanitizedBody.module || 'Unknown',
-    appType: sanitizedBody.appType || 'web',
-    osType: sanitizedBody.osType || 'cross_platform',
-    createdBy: sanitizedBody.createdBy || 'unknown',
-    createdAt: new Date().toISOString(),
-    // Include optional fields if provided
-    ...(['prerequisites', 'testSteps', 'expectedResults', 'testDataRequirements', 
-         'environmentRequirements', 'estimatedTime', 'tags', 'epicId', 'prdLink', 
-         'relatedRequirements'].reduce((acc, field) => {
-      if (sanitizedBody[field] !== undefined) {
-        acc[field] = sanitizedBody[field];
-      }
-      return acc;
-    }, {}))
+    title: req.body.title || 'Untitled Test Case',
+    description: req.body.description || '',
+    priority: req.body.priority || 'medium',
+    status: req.body.status || 'draft',
+    category: req.body.category || 'General',
+    module: req.body.module || 'Unknown',
+    appType: req.body.appType || 'web',
+    osType: req.body.osType || 'cross_platform',
+    createdBy: req.body.createdBy || 'unknown',
+    createdAt: new Date().toISOString()
   };
   
   data.testCases.push(newTestCase);
@@ -1244,8 +1032,8 @@ app.post('/api/test-cases',
 });
 
 // Demo API endpoint (for backward compatibility)
-app.get('/api/demo', async (req, res) => {
-  const data = await readData();
+app.get('/api/demo', (req, res) => {
+  const data = readData();
   res.json({
     success: true,
     message: 'QAest API is working!',
@@ -1264,7 +1052,7 @@ app.get('/api/demo', async (req, res) => {
 
 // Demo test case creation (for backward compatibility)
 app.post('/api/test-cases/demo', async (req, res) => {
-  const data = await readData();
+  const data = readData();
   
   const existingIds = data.testCases.map(tc => parseInt(tc.id.replace('TC-', ''))).sort((a, b) => b - a);
   const nextId = existingIds.length > 0 ? existingIds[0] + 1 : 1;
@@ -1301,7 +1089,7 @@ app.post('/api/test-cases/demo', async (req, res) => {
 app.put('/api/test-cases/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const updateData = req.body;
-  const data = await readData();
+  const data = readData();
   
   // Find test case
   const testCaseIndex = data.testCases.findIndex(tc => tc.id === id);
@@ -1360,7 +1148,7 @@ app.put('/api/test-cases/:id', authenticateToken, async (req, res) => {
 // Delete test case
 app.delete('/api/test-cases/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const data = await readData();
+  const data = readData();
   
   // Find test case
   const testCaseIndex = data.testCases.findIndex(tc => tc.id === id);
@@ -1415,8 +1203,8 @@ app.delete('/api/test-cases/:id', authenticateToken, async (req, res) => {
 // Permission Management Endpoints
 
 // Get my permission requests
-app.get('/api/permissions/my-requests', authenticateToken, async (req, res) => {
-  const data = await readData();
+app.get('/api/permissions/my-requests', authenticateToken, (req, res) => {
+  const data = readData();
   const userId = req.user.id;
   
   const myRequests = (data.permissionRequests || [])
@@ -1440,8 +1228,8 @@ app.get('/api/permissions/my-requests', authenticateToken, async (req, res) => {
 });
 
 // Get pending approvals (requests where I'm the owner)
-app.get('/api/permissions/pending-approvals', authenticateToken, async (req, res) => {
-  const data = await readData();
+app.get('/api/permissions/pending-approvals', authenticateToken, (req, res) => {
+  const data = readData();
   const userId = req.user.id;
   
   const pendingApprovals = (data.permissionRequests || [])
@@ -1465,28 +1253,17 @@ app.get('/api/permissions/pending-approvals', authenticateToken, async (req, res
 });
 
 // Request permission
-app.post('/api/permissions/request', 
-  authenticateToken,
-  [
-    body('testCaseId')
-      .trim()
-      .notEmpty()
-      .withMessage('Test case ID is required')
-      .matches(/^TC-\d{6}$/)
-      .withMessage('Invalid test case ID format'),
-    body('permissionType')
-      .isIn(['edit', 'delete'])
-      .withMessage('Permission type must be either "edit" or "delete"'),
-    body('reason')
-      .trim()
-      .isLength({ min: 10, max: 500 })
-      .withMessage('Reason must be between 10 and 500 characters')
-  ],
-  handleValidationErrors,
-  async (req, res) => {
+app.post('/api/permissions/request', authenticateToken, async (req, res) => {
   const { testCaseId, permissionType, reason } = req.body;
   
-  const data = await readData();
+  if (!testCaseId || !permissionType || !reason) {
+    return res.status(400).json({
+      success: false,
+      message: 'Test case ID, permission type, and reason are required'
+    });
+  }
+  
+  const data = readData();
   const testCase = data.testCases.find(tc => tc.id === testCaseId);
   
   if (!testCase) {
@@ -1585,7 +1362,7 @@ app.put('/api/permissions/:requestId/approve', authenticateToken, async (req, re
   const { requestId } = req.params;
   const { resolutionNote } = req.body;
   
-  const data = await readData();
+  const data = readData();
   const request = (data.permissionRequests || []).find(r => r.id === requestId);
   
   if (!request) {
@@ -1673,7 +1450,7 @@ app.put('/api/permissions/:requestId/deny', authenticateToken, async (req, res) 
   const { requestId } = req.params;
   const { resolutionNote } = req.body;
   
-  const data = await readData();
+  const data = readData();
   const request = (data.permissionRequests || []).find(r => r.id === requestId);
   
   if (!request) {
@@ -1757,8 +1534,8 @@ app.put('/api/permissions/:requestId/deny', authenticateToken, async (req, res) 
 });
 
 // Get notifications
-app.get('/api/notifications', authenticateToken, async (req, res) => {
-  const data = await readData();
+app.get('/api/notifications', authenticateToken, (req, res) => {
+  const data = readData();
   const userId = req.user.id;
   
   const notifications = (data.notifications || [])
@@ -1775,7 +1552,7 @@ app.get('/api/notifications', authenticateToken, async (req, res) => {
 // Mark notification as read
 app.put('/api/notifications/:notificationId/read', authenticateToken, async (req, res) => {
   const { notificationId } = req.params;
-  const data = await readData();
+  const data = readData();
   
   const notification = (data.notifications || []).find(
     n => n.id === notificationId && n.userId === req.user.id
@@ -1805,7 +1582,7 @@ app.put('/api/notifications/:notificationId/read', authenticateToken, async (req
 
 // Mark all notifications as read
 app.put('/api/notifications/mark-all-read', authenticateToken, async (req, res) => {
-  const data = await readData();
+  const data = readData();
   const userId = req.user.id;
   
   if (data.notifications) {
@@ -1832,7 +1609,7 @@ app.put('/api/notifications/mark-all-read', authenticateToken, async (req, res) 
 // Delete notification
 app.delete('/api/notifications/:notificationId', authenticateToken, async (req, res) => {
   const { notificationId } = req.params;
-  const data = await readData();
+  const data = readData();
   
   if (!data.notifications) {
     return res.status(404).json({
@@ -1868,9 +1645,9 @@ app.delete('/api/notifications/:notificationId', authenticateToken, async (req, 
 });
 
 // Get audit log
-app.get('/api/audit-log', authenticateToken, async (req, res) => {
+app.get('/api/audit-log', authenticateToken, (req, res) => {
   const { action, entityType, performedBy, dateFrom, dateTo, entityId } = req.query;
-  const data = await readData();
+  const data = readData();
   
   let auditEntries = data.auditLog || [];
   
@@ -1901,28 +1678,6 @@ app.get('/api/audit-log', authenticateToken, async (req, res) => {
     success: true,
     data: auditEntries.slice(0, 100) // Return latest 100 entries
   });
-});
-
-// Global error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Error:', err.stack);
-  res.status(500).json({
-    success: false,
-    message: 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
-});
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
-  process.exit(1);
-});
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  process.exit(1);
 });
 
 const PORT = process.env.PORT || 8000;

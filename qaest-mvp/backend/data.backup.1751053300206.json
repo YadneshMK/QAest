@@ -3,7 +3,7 @@
     {
       "id": "user-001",
       "username": "demo-user",
-      "password": "$2b$10$.mdMlRfV5FWCf8EPHqF5zOSc8f/rppVYC5hY7j2d/coxOzspRfBxi",
+      "password": "password123",
       "email": "demo@qaest.com",
       "firstName": "Demo",
       "lastName": "User",
@@ -17,7 +17,7 @@
     {
       "id": "user-002",
       "username": "qa-lead",
-      "password": "$2b$10$WTdm1rS9WLwHcrGwazcAludqQzRTVs3Qt4WJYwmKgNR8EEiMPURz2",
+      "password": "lead123",
       "email": "lead@qaest.com",
       "firstName": "QA",
       "lastName": "Lead",
@@ -31,7 +31,7 @@
     {
       "id": "user-003",
       "username": "junior-qa",
-      "password": "$2b$10$FvfHBGtneNb7DCZsutYeKOOtE9/XyBIV6FCHdG65rfJaPyorlUigK",
+      "password": "junior123",
       "email": "junior@qaest.com",
       "firstName": "Junior",
       "lastName": "QA",
@@ -45,7 +45,7 @@
     {
       "id": "user-004",
       "username": "project-manager",
-      "password": "$2b$10$8bBjN150SoBC5LtAZ7cn2.kVpf1i5dzXZKP5RzpZC4VgKkRz2zxPm",
+      "password": "pm123",
       "email": "pm@qaest.com",
       "firstName": "Project",
       "lastName": "Manager",
@@ -59,7 +59,7 @@
     {
       "id": "user-005",
       "username": "test-approval-user",
-      "password": "$2b$10$j6s.tS409a8ELkxExdEexO0xuZvktb61/0R9sbcSMw1kYl6jm2RmS",
+      "password": "test123",
       "email": "testapproval@qaest.com",
       "firstName": "Test",
       "lastName": "ApprovalUser",
@@ -73,7 +73,7 @@
     {
       "id": "user-006",
       "username": "new-qa-engineer",
-      "password": "$2b$10$jFUZsdy52OW6MwAeyJBRN.NnMvc8xl4vhFy/zY84NgxxPJxLjZwte",
+      "password": "newuser123",
       "email": "newqa@qaest.com",
       "firstName": "New",
       "lastName": "QAEngineer",
@@ -87,7 +87,7 @@
     {
       "id": "user-007",
       "username": "pm-test-user",
-      "password": "$2b$10$gA2AK.8mG3amIRAb.1pOXuWnc/8R.OaqPmT6Uhlp9flDpt/A4.THC",
+      "password": "pmtest123",
       "email": "pmtest@qaest.com",
       "firstName": "PM",
       "lastName": "TestUser",
@@ -101,7 +101,7 @@
     {
       "id": "user-008",
       "username": "testuser123",
-      "password": "$2b$10$JNh2e6MlNrs0/eSN6J6QqewoFbui5KAt9H0xiteo8eR/J53UoiPWK",
+      "password": "test123",
       "email": "test@qaest.com",
       "firstName": "Test",
       "lastName": "User",
