@@ -50,6 +50,7 @@ const UserApprovalPanel: React.FC<UserApprovalPanelProps> = ({ authToken, curren
     } else {
       fetchAllUsers();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   const fetchPendingUsers = async () => {
