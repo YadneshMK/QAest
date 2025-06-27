@@ -1,0 +1,14 @@
+{
+  "name": "qaest-mvp",
+  "version": "1.0.0",
+  "description": "QAest MVP",
+  "scripts": {
+    "start:all": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "backend": "cd backend && node server-basic.js",
+    "frontend": "cd frontend && npm start",
+    "install:all": "cd backend && npm install && cd ../frontend && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^7.6.0"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "qaest",
+  "version": "1.0.0",
+  "description": "QAest Test Case Management System",
+  "scripts": {
+    "start": "node server.js",
+    "backend": "cd qaest-mvp/backend && node server-basic.js",
+    "frontend": "cd qaest-mvp/frontend && npm start",
+    "install": "cd qaest-mvp/backend && npm install",
+    "build": "echo 'No build required for backend-only deployment'"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
