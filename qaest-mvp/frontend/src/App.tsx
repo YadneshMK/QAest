@@ -119,11 +119,15 @@ const App: React.FC = () => {
     if (savedAuth) {
       try {
         const authData: AuthData = JSON.parse(savedAuth);
-        setCurrentUser(authData.user);
-        setAuthToken(authData.token);
-        setIsLoggedIn(true);
-        fetchTestCases();
-        fetchFilterOptions();
+        if (authData && authData.user && authData.token) {
+          setCurrentUser(authData.user);
+          setAuthToken(authData.token);
+          setIsLoggedIn(true);
+          fetchTestCases();
+          fetchFilterOptions();
+        } else {
+          throw new Error('Invalid auth data structure');
+        }
       } catch (error) {
         console.error('Error parsing saved auth:', error);
         localStorage.removeItem('qaest_auth');
@@ -381,7 +385,7 @@ const App: React.FC = () => {
       }}>
         <div style={{
           backgroundColor: 'white',
-          padding: '3rem',
+          padding: window.innerWidth < 640 ? '1.5rem' : '3rem',
           borderRadius: '16px',
           boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
           width: '100%',
@@ -961,8 +965,8 @@ const App: React.FC = () => {
                 
                 <div style={{ 
                   display: 'grid', 
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', 
-                  gap: '1.5rem', 
+                  gridTemplateColumns: window.innerWidth < 640 ? '1fr' : 'repeat(auto-fill, minmax(250px, 1fr))', 
+                  gap: window.innerWidth < 640 ? '1rem' : '1.5rem', 
                   marginBottom: '1.5rem' 
                 }}>
                   <div style={{ minWidth: 0 }}>
@@ -1123,7 +1127,7 @@ const App: React.FC = () => {
         {/* Statistics */}
         <div style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+          gridTemplateColumns: window.innerWidth < 640 ? '1fr' : 'repeat(auto-fit, minmax(250px, 1fr))', 
           gap: '1rem',
           marginBottom: '2rem'
         }}>
@@ -1230,8 +1234,8 @@ const App: React.FC = () => {
             overflow: 'auto'
           }}>
             <div style={{
-              width: '100%',
-              maxWidth: '1000px',
+              width: window.innerWidth < 768 ? '95%' : '90%',
+              maxWidth: window.innerWidth < 768 ? '100%' : '1000px',
               maxHeight: '90vh',
               overflow: 'auto',
               borderRadius: '8px'

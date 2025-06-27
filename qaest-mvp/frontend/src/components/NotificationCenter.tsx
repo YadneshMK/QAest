@@ -37,6 +37,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
     // Poll for new notifications every 30 seconds
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchNotifications = async () => {
@@ -198,8 +199,9 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
             position: 'absolute',
             top: '100%',
             right: '0',
-            width: '400px',
-            maxHeight: '500px',
+            width: '90vw',
+            maxWidth: '400px',
+            maxHeight: '80vh',
             backgroundColor: 'white',
             borderRadius: '8px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
@@ -371,7 +373,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                             fontSize: '0.75rem',
                             color: '#a0aec0'
                           }}>
-                            {new Date(notification.createdAt).toRelativeTime()}
+                            {toRelativeTime(new Date(notification.createdAt))}
                           </span>
                           {notification.actionLabel && (
                             <span style={{
@@ -396,15 +398,9 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
   );
 };
 
-// Add this extension to the Date prototype for relative time
-declare global {
-  interface Date {
-    toRelativeTime(): string;
-  }
-}
-
-Date.prototype.toRelativeTime = function() {
-  const seconds = Math.floor((new Date().getTime() - this.getTime()) / 1000);
+// Utility function for relative time
+const toRelativeTime = (date: Date): string => {
+  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
   
   if (seconds < 60) return 'just now';
   const minutes = Math.floor(seconds / 60);

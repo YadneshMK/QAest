@@ -202,9 +202,28 @@ const authenticateToken = (req, res, next) => {
   }
 
   // For demo purposes, we'll extract user info from token
-  // In real app, decode JWT and get user info
-  req.user = { token }; // Placeholder
-  next();
+  // Token format: demo-jwt-token-timestamp-userId
+  const tokenParts = token.split('-');
+  if (tokenParts.length >= 5) {
+    const userId = tokenParts.slice(4).join('-'); // Get everything after demo-jwt-token-timestamp-
+    const data = readData();
+    const user = data.users.find(u => u.id === userId);
+    
+    if (!user || user.status !== 'active') {
+      return res.status(403).json({
+        success: false,
+        message: 'Invalid or inactive user'
+      });
+    }
+    
+    req.user = user;
+    next();
+  } else {
+    return res.status(403).json({
+      success: false,
+      message: 'Invalid token format'
+    });
+  }
 };
 
 // Get user from token
@@ -405,12 +424,8 @@ app.post('/api/auth/login', (req, res) => {
 app.get('/api/users/pending', authenticateToken, (req, res) => {
   const data = readData();
   
-  // Get current user from token (simplified for demo)
-  const authHeader = req.headers['authorization'];
-  const token = authHeader.split(' ')[1];
-  const tokenParts = token.split('-');
-  const userId = tokenParts.slice(-2).join('-'); // Extract user-XXX from demo-jwt-token-timestamp-user-XXX
-  const currentUser = data.users.find(u => u.id === userId);
+  // Get current user from middleware
+  const currentUser = req.user;
 
   if (!hasApprovalPermissions(currentUser)) {
     return res.status(403).json({
@@ -447,12 +462,8 @@ app.get('/api/users/pending', authenticateToken, (req, res) => {
 app.get('/api/users', authenticateToken, (req, res) => {
   const data = readData();
   
-  // Get current user from token
-  const authHeader = req.headers['authorization'];
-  const token = authHeader.split(' ')[1];
-  const tokenParts = token.split('-');
-  const userId = tokenParts.slice(-2).join('-'); // Extract user-XXX from demo-jwt-token-timestamp-user-XXX
-  const currentUser = data.users.find(u => u.id === userId);
+  // Get current user from middleware
+  const currentUser = req.user;
 
   if (!hasApprovalPermissions(currentUser)) {
     return res.status(403).json({
@@ -478,12 +489,8 @@ app.put('/api/users/:id/approve', authenticateToken, (req, res) => {
   const { id } = req.params;
   const data = readData();
   
-  // Get current user from token
-  const authHeader = req.headers['authorization'];
-  const token = authHeader.split(' ')[1];
-  const tokenParts = token.split('-');
-  const userId = tokenParts.slice(-2).join('-'); // Extract user-XXX from demo-jwt-token-timestamp-user-XXX
-  const currentUser = data.users.find(u => u.id === userId);
+  // Get current user from middleware
+  const currentUser = req.user;
 
   if (!hasApprovalPermissions(currentUser)) {
     return res.status(403).json({
@@ -543,12 +550,8 @@ app.put('/api/users/:id/reject', authenticateToken, (req, res) => {
   const { reason } = req.body;
   const data = readData();
   
-  // Get current user from token
-  const authHeader = req.headers['authorization'];
-  const token = authHeader.split(' ')[1];
-  const tokenParts = token.split('-');
-  const userId = tokenParts.slice(-2).join('-'); // Extract user-XXX from demo-jwt-token-timestamp-user-XXX
-  const currentUser = data.users.find(u => u.id === userId);
+  // Get current user from middleware
+  const currentUser = req.user;
 
   if (!hasApprovalPermissions(currentUser)) {
     return res.status(403).json({
@@ -607,12 +610,8 @@ app.put('/api/users/:id/role', authenticateToken, (req, res) => {
   const { newRole, reason } = req.body;
   const data = readData();
   
-  // Get current user from token
-  const authHeader = req.headers['authorization'];
-  const token = authHeader.split(' ')[1];
-  const tokenParts = token.split('-');
-  const userId = tokenParts.slice(-2).join('-'); // Extract user-XXX from demo-jwt-token-timestamp-user-XXX
-  const currentUser = data.users.find(u => u.id === userId);
+  // Get current user from middleware
+  const currentUser = req.user;
 
   if (!hasApprovalPermissions(currentUser)) {
     return res.status(403).json({

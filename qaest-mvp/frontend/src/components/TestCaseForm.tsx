@@ -80,6 +80,15 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({ onSubmit, onCancel, initial
     if (formData.estimatedTime < 1) {
       newErrors.estimatedTime = 'Estimated time must be at least 1 minute';
     }
+    
+    // Validate URL if provided
+    if (formData.prdLink.trim()) {
+      try {
+        new URL(formData.prdLink);
+      } catch {
+        newErrors.prdLink = 'Please enter a valid URL';
+      }
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -590,9 +599,13 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({ onSubmit, onCancel, initial
                   type="url"
                   value={formData.prdLink}
                   onChange={(e) => setFormData({ ...formData, prdLink: e.target.value })}
-                  style={inputStyle}
+                  style={{
+                    ...inputStyle,
+                    borderColor: errors.prdLink ? '#dc3545' : '#ddd'
+                  }}
                   placeholder="https://..."
                 />
+                {errors.prdLink && <div style={errorStyle}>{errors.prdLink}</div>}
               </div>
 
               <div style={{ marginBottom: '20px' }}>
